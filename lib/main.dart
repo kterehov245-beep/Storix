@@ -16,7 +16,7 @@ class MyMusicApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0F0C1B), // Глубокий фон
+        scaffoldBackgroundColor: const Color(0xFF1A1635), // Глубокий фиолетово-синий
       ),
       home: const MainScreen(),
     );
@@ -27,10 +27,10 @@ class MyMusicApp extends StatelessWidget {
 class Track {
   final String title;
   final String artist;
-  final String platform; // SC, YT, YM
-  final List<Color> gradientColors;
+  final String platform; // 'YT', 'SC', 'YM'
+  final String imageUrl;
 
-  Track(this.title, this.artist, this.platform, this.gradientColors);
+  Track(this.title, this.artist, this.platform, this.imageUrl);
 }
 
 // --- ГЛАВНЫЙ ЭКРАН ---
@@ -43,42 +43,39 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
-  // Наши рандомные треки с разными цветами
-  final List<Track> _recentTracks = [
-    Track('Её парень', 'Shluzov', 'SC', [Colors.pinkAccent, Colors.deepPurple]),
-    Track('гуль', 'dabbackwood', 'YT', [Colors.orangeAccent, Colors.redAccent]),
-    Track('хирург', 'curdest', 'SC', [Colors.teal, Colors.blueAccent]),
-    Track('назад в кресты', 'curdest', 'YM', [Colors.yellow, Colors.orange]),
-  ];
-
-  final List<Track> _recommendations = [
-    Track('Микс дня', 'Подборка для тебя', 'YM', [Colors.purpleAccent, Colors.indigo]),
-    Track('Новинки', 'Свежие релизы', 'SC', [Colors.cyan, Colors.blue]),
-    Track('Хиты', 'Топ 100', 'YT', [Colors.red, Colors.pink]),
-    Track('Спокойное', 'Для сна и отдыха', 'SC', [Colors.deepPurple, Colors.black]),
+  // Данные для сетки (как на скрине 2)
+  final List<Track> _gridTracks = [
+    Track('гуль', 'dabbackwood', 'YT', 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=200&auto=format&fit=crop'),
+    Track('dabbackwood - наза...', 'dabbackwood', 'YT', 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=200&auto=format&fit=crop'),
+    Track('хирург', 'curdest', 'SC', 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=200&auto=format&fit=crop'),
+    Track('Её парень', 'Shluzov', 'YT', 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=200&auto=format&fit=crop'),
+    Track('назад в кресты', 'curdest', 'YT', 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=200&auto=format&fit=crop'),
+    Track('ФРУКТОВЫЙ', 'Unknown', 'YT', 'https://images.unsplash.com/photo-1493225457124-a1a2a5f5646f?q=80&w=200&auto=format&fit=crop'),
   ];
 
   @override
   Widget build(BuildContext context) {
+    // 5 экранов под 5 иконок
     final List<Widget> screens = [
       _buildHomeTab(),
+      const Center(child: Text('Сетка', style: TextStyle(fontSize: 24, color: Colors.white54))),
       const Center(child: Text('Библиотека', style: TextStyle(fontSize: 24, color: Colors.white54))),
-      const Center(child: Text('Плейлисты', style: TextStyle(fontSize: 24, color: Colors.white54))),
       const Center(child: Text('Избранное', style: TextStyle(fontSize: 24, color: Colors.white54))),
+      const Center(child: Text('Поиск', style: TextStyle(fontSize: 24, color: Colors.white54))),
     ];
 
     return Scaffold(
       extendBody: true,
       body: IndexedStack(index: _currentIndex, children: screens),
 
-      // --- НИЖНЯЯ ПАНЕЛЬ (Стекло) ---
+      // --- НИЖНЯЯ ПАНЕЛЬ (Мини-плеер + Навигация) ---
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Мини-плеер
+              // Мини-плеер (как на скрине 2)
               GestureDetector(
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PlayerScreen())),
                 child: ClipRRect(
@@ -87,21 +84,17 @@ class _MainScreenState extends State<MainScreen> {
                     filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
                     child: Container(
                       height: 65,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.08),
+                        color: Colors.white.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        border: Border.all(color: Colors.white.withOpacity(0.15)),
                       ),
                       child: Row(
                         children: [
-                          // Градиентная обложка мини-плеера
-                          Container(
-                            width: 45, height: 45,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              gradient: LinearGradient(colors: [Colors.pinkAccent, Colors.deepPurple]),
-                            ),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Image.network('https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=200&auto=format&fit=crop', width: 45, height: 45, fit: BoxFit.cover),
                           ),
                           const SizedBox(width: 12),
                           const Expanded(
@@ -109,14 +102,14 @@ class _MainScreenState extends State<MainScreen> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Её парень', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                                Text('Shluzov', style: TextStyle(color: Colors.white54, fontSize: 13)),
+                                Text('распять (folk remix)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                Text('stellla и plateexx', style: TextStyle(color: Colors.white54, fontSize: 13)),
                               ],
                             ),
                           ),
-                          const Icon(Icons.pause_rounded, color: Colors.white, size: 30),
-                          const SizedBox(width: 10),
-                          const Icon(Icons.skip_next_rounded, color: Colors.white, size: 30),
+                          const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 35),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.skip_next_rounded, color: Colors.white, size: 35),
                         ],
                       ),
                     ),
@@ -125,7 +118,7 @@ class _MainScreenState extends State<MainScreen> {
               ),
               const SizedBox(height: 12),
               
-              // Навигация
+              // Панель навигации (5 иконок)
               ClipRRect(
                 borderRadius: BorderRadius.circular(32),
                 child: BackdropFilter(
@@ -133,7 +126,7 @@ class _MainScreenState extends State<MainScreen> {
                   child: Container(
                     height: 70,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
+                      color: Colors.white.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(32),
                       border: Border.all(color: Colors.white.withOpacity(0.1)),
                     ),
@@ -142,8 +135,9 @@ class _MainScreenState extends State<MainScreen> {
                       children: [
                         _buildNavIcon(Icons.home_filled, 0),
                         _buildNavIcon(Icons.grid_view_rounded, 1),
-                        _buildNavIcon(Icons.album_rounded, 2),
+                        _buildNavIcon(Icons.library_music_rounded, 2),
                         _buildNavIcon(Icons.star_rounded, 3),
+                        _buildNavIcon(Icons.search_rounded, 4),
                       ],
                     ),
                   ),
@@ -161,22 +155,22 @@ class _MainScreenState extends State<MainScreen> {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: [Color(0xFF1E1338), Color(0xFF0F0C1B)],
+          begin: Alignment.topCenter, end: Alignment.bottomCenter,
+          colors: [Color(0xFF261C3D), Color(0xFF1A1635), Color(0xFF121016)],
         ),
       ),
       child: SafeArea(
         bottom: false,
         child: ListView(
-          padding: const EdgeInsets.only(bottom: 180),
+          padding: const EdgeInsets.only(bottom: 180), // Отступ под плеер
           children: [
-            // Шапка
+            // Шапка с приветствием
             Padding(
-              padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 10),
+              padding: const EdgeInsets.only(left: 20, right: 20, top: 20),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Добрый день', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
+                  const Text('Добрый вечер', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, color: Colors.white)),
                   CircleAvatar(
                     backgroundColor: Colors.white.withOpacity(0.1),
                     child: const Icon(Icons.person_outline, color: Colors.white),
@@ -184,80 +178,109 @@ class _MainScreenState extends State<MainScreen> {
                 ],
               ),
             ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Text('SoundCloud и аддоны: импорт и действия в RX Playa; лайки аккаунта недоступны.', style: TextStyle(color: Colors.white54, fontSize: 11)),
+            ),
 
-            // Большой баннер (как в RX, но наш)
+            // Баннер RX Wave (ИСПРАВЛЕНА ОШИБКА OVERFLOW)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               child: Container(
-                height: 120,
+                height: 100,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(24),
                   gradient: const LinearGradient(
                     begin: Alignment.topLeft, end: Alignment.bottomRight,
-                    colors: [Color(0xFF6B4EFF), Color(0xFF3B2D7D)],
+                    colors: [Color(0xFF5AB6E5), Color(0xFF9A81D7)], // Градиент как на фото
                   ),
-                  boxShadow: [BoxShadow(color: const Color(0xFF6B4EFF).withOpacity(0.3), blurRadius: 20)],
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Твой личный саундтрек', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
-                      const SizedBox(height: 8),
-                      const Text('Обновлено сегодня', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                      const Spacer(),
-                      Align(
-                        alignment: Alignment.bottomRight,
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                          child: const Icon(Icons.play_arrow_rounded, color: Colors.black),
-                        ),
-                      )
+                      const Text('RX Wave', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+                      Container(
+                        width: 50, height: 50,
+                        decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withOpacity(0.3)),
+                        child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 30),
+                      ),
                     ],
                   ),
                 ),
               ),
             ),
 
-            // Раздел 1: Горизонтальная карусель
-            const Padding(
-              padding: EdgeInsets.only(left: 20, top: 20, bottom: 12),
-              child: Text('Недавно прослушано', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            ),
-            SizedBox(
-              height: 180,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                itemCount: _recentTracks.length,
-                itemBuilder: (context, index) {
-                  return _buildHorizontalCard(_recentTracks[index]);
-                },
+            // Фильтры (Кнопки)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Row(
+                children: [
+                  _buildFilterChip('Все площадки', true),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('Музыка', false),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('Плейлисты', false),
+                ],
               ),
             ),
 
-            // Раздел 2: Сетка рекомендаций
-            const Padding(
-              padding: EdgeInsets.only(left: 20, top: 30, bottom: 12),
-              child: Text('Специально для тебя', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            ),
+            // Сетка карточек (2 колонки, как на скрине 2)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               child: GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
-                  crossAxisSpacing: 15,
-                  mainAxisSpacing: 15,
-                  childAspectRatio: 0.85,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 2.5, // Делает карточки горизонтальными
                 ),
-                itemCount: _recommendations.length,
+                itemCount: _gridTracks.length,
                 itemBuilder: (context, index) {
-                  return _buildGridCard(_recommendations[index]);
+                  return _buildHorizontalGridCard(_gridTracks[index]);
+                },
+              ),
+            ),
+
+            // Заголовок "Для вас"
+            const Padding(
+              padding: EdgeInsets.only(left: 20, top: 20, bottom: 10),
+              child: Text('Для вас', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+            ),
+
+            // Горизонтальная карусель "Для вас"
+            SizedBox(
+              height: 180,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                itemCount: _gridTracks.length,
+                itemBuilder: (context, index) {
+                  return GestureDetector(
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PlayerScreen())),
+                    child: Container(
+                      width: 140,
+                      margin: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.network(
+                              _gridTracks[index].imageUrl,
+                              width: 140, height: 140, fit: BoxFit.cover,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(_gridTracks[index].title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          Text(_gridTracks[index].artist, style: const TextStyle(color: Colors.white54, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ],
+                      ),
+                    ),
+                  );
                 },
               ),
             ),
@@ -267,81 +290,37 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  // Карточка для горизонтальной карусели
-  Widget _buildHorizontalCard(Track track) {
-    return GestureDetector(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PlayerScreen())),
-      child: Container(
-        width: 140,
-        margin: const EdgeInsets.symmetric(horizontal: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(
-              children: [
-                // Градиентная обложка
-                Container(
-                  height: 140, width: 140,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: track.gradientColors),
-                  ),
-                ),
-                // Значок платформы (SC, YT...)
-                Positioned(
-                  bottom: 8, right: 8,
-                  child: _buildPlatformBadge(track.platform),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(track.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
-            Text(track.artist, style: const TextStyle(color: Colors.white54, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Карточка для сетки (2 колонки)
-  Widget _buildGridCard(Track track) {
+  // Карточка для сетки (В точности как на фото)
+  Widget _buildHorizontalGridCard(Track track) {
     return GestureDetector(
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PlayerScreen())),
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          color: Colors.white.withOpacity(0.05),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
+          color: const Color(0xFF2A2442), // Темно-фиолетовый фон карточки
+          borderRadius: BorderRadius.circular(12),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Expanded(
-              child: Stack(
-                children: [
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                      gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: track.gradientColors),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 8, right: 8,
-                    child: _buildPlatformBadge(track.platform),
-                  ),
-                ],
-              ),
+            // Обложка слева
+            ClipRRect(
+              borderRadius: const BorderRadius.only(topLeft: Radius.circular(12), bottomLeft: Radius.circular(12)),
+              child: Image.network(track.imageUrl, width: 70, height: 70, fit: BoxFit.cover),
             ),
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(track.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 4),
-                  Text(track.artist, style: const TextStyle(color: Colors.white54, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
-                ],
+            const SizedBox(width: 8),
+            // Текст и бейджи справа
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(track.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 6),
+                    // Бейдж платформы
+                    _buildPlatformBadge(track.platform),
+                  ],
+                ),
               ),
             ),
           ],
@@ -350,26 +329,43 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  // Виджет значка платформы
+  Widget _buildFilterChip(String text, bool isActive) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: isActive ? const Color(0xFF3EB1E8) : const Color(0xFF2A2442),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(text, style: TextStyle(color: isActive ? Colors.white : Colors.white70, fontSize: 13)),
+    );
+  }
+
+  // Бейджи платформ (SC, YT)
   Widget _buildPlatformBadge(String platform) {
     Color color;
-    String text;
-    if (platform == 'SC') {
-      color = Colors.orangeAccent; text = 'SC';
-    } else if (platform == 'YT') {
-      color = Colors.redAccent; text = 'YT';
+    IconData? icon;
+    if (platform == 'YT') {
+      color = Colors.redAccent;
+      icon = Icons.play_arrow;
+    } else if (platform == 'SC') {
+      color = Colors.orangeAccent;
+      icon = Icons.cloud_queue;
     } else {
-      color = Colors.yellow; text = 'YM';
+      color = Colors.yellow;
+      icon = Icons.music_note;
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.5)),
-      ),
-      child: Text(text, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color)),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(color: color.withOpacity(0.2), shape: BoxShape.circle),
+          child: Icon(icon, size: 10, color: color),
+        ),
+        const SizedBox(width: 4),
+        Text(platform, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color)),
+      ],
     );
   }
 
@@ -390,7 +386,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-// --- ПОЛНОЭКРАННЫЙ ПЛЕЕР (ОСТАЛСЯ КРАСИВЫМ) ---
+// --- ПОЛНОЭКРАННЫЙ ПЛЕЕР (Оставляем как был, он красивый) ---
 class PlayerScreen extends StatefulWidget {
   const PlayerScreen({super.key});
   @override
@@ -446,7 +442,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
               child: Column(
                 children: [
-                  // Шапка
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     child: Row(
@@ -456,15 +451,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           icon: const Icon(Icons.keyboard_arrow_down, size: 32),
                           onPressed: () => Navigator.pop(context),
                         ),
-                        const Text('Сейчас играет', style: TextStyle(fontSize: 12, color: Colors.white54, letterSpacing: 1.2)),
+                        const Text('Playing from SoundCloud', style: TextStyle(fontSize: 12, color: Colors.white54)),
                         IconButton(icon: const Icon(Icons.more_horiz), onPressed: () {}),
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
-                  // Обложка (градиент)
                   Container(
                     height: 300, width: 300,
                     decoration: BoxDecoration(
@@ -472,34 +464,21 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       boxShadow: [
                         BoxShadow(color: Colors.pinkAccent.withOpacity(0.3), blurRadius: 40, offset: const Offset(0, 20))
                       ],
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft, end: Alignment.bottomRight, 
-                        colors: [Colors.pinkAccent, Colors.deepPurple]
-                      ),
+                      image: const DecorationImage(
+                        image: NetworkImage('https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=500&auto=format&fit=crop'), 
+                        fit: BoxFit.cover,
+                      )
                     ),
                   ),
-                  
                   const SizedBox(height: 40),
-
-                  // Инфо о треке и бейдж
-                  Column(
+                  const Column(
                     children: [
-                      const Text('Её парень', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
-                      const SizedBox(height: 6),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text('Shluzov', style: TextStyle(fontSize: 16, color: Colors.white54)),
-                          const SizedBox(width: 8),
-                          _buildPlatformBadge('SC'),
-                        ],
-                      ),
+                      Text('Её парень', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                      SizedBox(height: 6),
+                      Text('Shluzov', style: TextStyle(fontSize: 16, color: Colors.white54)),
                     ],
                   ),
-
                   const SizedBox(height: 30),
-
-                  // Караоке текст
                   SizedBox(
                     height: 60,
                     child: Center(
@@ -523,10 +502,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 30),
-
-                  // Слайдер
                   SliderTheme(
                     data: SliderTheme.of(context).copyWith(
                       trackHeight: 4.0,
@@ -543,8 +519,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       onChanged: (val) => setState(() => _currentTime = val),
                     ),
                   ),
-                  
-                  // Тайминги
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 10),
                     child: Row(
@@ -555,10 +529,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 30),
-
-                  // Управление
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
@@ -580,10 +551,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       const Icon(Icons.repeat, color: Colors.white54),
                     ],
                   ),
-
                   const SizedBox(height: 40),
-
-                  // Доп кнопки
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
@@ -600,20 +568,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  // Бейдж (дублируется для плеера)
-  Widget _buildPlatformBadge(String platform) {
-    Color color = platform == 'SC' ? Colors.orangeAccent : (platform == 'YT' ? Colors.redAccent : Colors.yellow);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.5)),
-      ),
-      child: Text(platform, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color)),
     );
   }
 }
