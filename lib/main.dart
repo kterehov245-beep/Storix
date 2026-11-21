@@ -16,15 +16,21 @@ class MyMusicApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0F0C1B), // Глубокий космический фон
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF9D4EDD), // Фиолетовый акцент
-          brightness: Brightness.dark,
-        ),
+        scaffoldBackgroundColor: const Color(0xFF0F0C1B), // Глубокий фон
       ),
       home: const MainScreen(),
     );
   }
+}
+
+// --- МОДЕЛЬ ТРЕКА ---
+class Track {
+  final String title;
+  final String artist;
+  final String platform; // SC, YT, YM
+  final List<Color> gradientColors;
+
+  Track(this.title, this.artist, this.platform, this.gradientColors);
 }
 
 // --- ГЛАВНЫЙ ЭКРАН ---
@@ -37,17 +43,23 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
-  // Треки для главной страницы
-  final List<Map<String, String>> _tracks = [
-    {'title': 'Её парень', 'artist': 'Shluzov', 'img': 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=200&auto=format&fit=crop'},
-    {'title': 'гуль', 'artist': 'dabbackwood', 'img': 'https://images.unsplash.com/photo-1493225457124-a1a2a5f5646f?q=80&w=200&auto=format&fit=crop'},
-    {'title': 'хирург', 'artist': 'curdest', 'img': 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=200&auto=format&fit=crop'},
-    {'title': 'назад в кресты', 'artist': 'SOURCE', 'img': 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=200&auto=format&fit=crop'},
+  // Наши рандомные треки с разными цветами
+  final List<Track> _recentTracks = [
+    Track('Её парень', 'Shluzov', 'SC', [Colors.pinkAccent, Colors.deepPurple]),
+    Track('гуль', 'dabbackwood', 'YT', [Colors.orangeAccent, Colors.redAccent]),
+    Track('хирург', 'curdest', 'SC', [Colors.teal, Colors.blueAccent]),
+    Track('назад в кресты', 'curdest', 'YM', [Colors.yellow, Colors.orange]),
+  ];
+
+  final List<Track> _recommendations = [
+    Track('Микс дня', 'Подборка для тебя', 'YM', [Colors.purpleAccent, Colors.indigo]),
+    Track('Новинки', 'Свежие релизы', 'SC', [Colors.cyan, Colors.blue]),
+    Track('Хиты', 'Топ 100', 'YT', [Colors.red, Colors.pink]),
+    Track('Спокойное', 'Для сна и отдыха', 'SC', [Colors.deepPurple, Colors.black]),
   ];
 
   @override
   Widget build(BuildContext context) {
-    // ВАЖНО: Здесь 4 экрана, чтобы не было красного экрана при нажатии на 4-ю иконку
     final List<Widget> screens = [
       _buildHomeTab(),
       const Center(child: Text('Библиотека', style: TextStyle(fontSize: 24, color: Colors.white54))),
@@ -57,12 +69,9 @@ class _MainScreenState extends State<MainScreen> {
 
     return Scaffold(
       extendBody: true,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: screens,
-      ),
+      body: IndexedStack(index: _currentIndex, children: screens),
 
-      // --- НИЖНЯЯ ПАНЕЛЬ ---
+      // --- НИЖНЯЯ ПАНЕЛЬ (Стекло) ---
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -78,7 +87,7 @@ class _MainScreenState extends State<MainScreen> {
                     filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
                     child: Container(
                       height: 65,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(20),
@@ -86,9 +95,13 @@ class _MainScreenState extends State<MainScreen> {
                       ),
                       child: Row(
                         children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: Image.network(_tracks[0]['img']!, width: 45, height: 45, fit: BoxFit.cover),
+                          // Градиентная обложка мини-плеера
+                          Container(
+                            width: 45, height: 45,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              gradient: LinearGradient(colors: [Colors.pinkAccent, Colors.deepPurple]),
+                            ),
                           ),
                           const SizedBox(width: 12),
                           const Expanded(
@@ -112,7 +125,7 @@ class _MainScreenState extends State<MainScreen> {
               ),
               const SizedBox(height: 12),
               
-              // Панель навигации
+              // Навигация
               ClipRRect(
                 borderRadius: BorderRadius.circular(32),
                 child: BackdropFilter(
@@ -155,14 +168,15 @@ class _MainScreenState extends State<MainScreen> {
       child: SafeArea(
         bottom: false,
         child: ListView(
-          padding: const EdgeInsets.only(bottom: 180), // Отступ под плеер
+          padding: const EdgeInsets.only(bottom: 180),
           children: [
+            // Шапка
             Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 10),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Добрый день', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
+                  const Text('Добрый день', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
                   CircleAvatar(
                     backgroundColor: Colors.white.withOpacity(0.1),
                     child: const Icon(Icons.person_outline, color: Colors.white),
@@ -170,72 +184,192 @@ class _MainScreenState extends State<MainScreen> {
                 ],
               ),
             ),
-            
+
+            // Большой баннер (как в RX, но наш)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Container(
+                height: 120,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft, end: Alignment.bottomRight,
+                    colors: [Color(0xFF6B4EFF), Color(0xFF3B2D7D)],
+                  ),
+                  boxShadow: [BoxShadow(color: const Color(0xFF6B4EFF).withOpacity(0.3), blurRadius: 20)],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('Твой личный саундтрек', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+                      const SizedBox(height: 8),
+                      const Text('Обновлено сегодня', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                      const Spacer(),
+                      Align(
+                        alignment: Alignment.bottomRight,
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                          child: const Icon(Icons.play_arrow_rounded, color: Colors.black),
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Раздел 1: Горизонтальная карусель
             const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24.0),
+              padding: EdgeInsets.only(left: 20, top: 20, bottom: 12),
               child: Text('Недавно прослушано', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             ),
-            const SizedBox(height: 16),
-            
-            // Горизонтальный список больших обложек (Стиль Spotify)
             SizedBox(
-              height: 200,
+              height: 180,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: _tracks.length,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                itemCount: _recentTracks.length,
                 itemBuilder: (context, index) {
-                  return GestureDetector(
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PlayerScreen())),
-                    child: Container(
-                      width: 140,
-                      margin: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: Image.network(
-                              _tracks[index]['img']!,
-                              width: 140, height: 140, fit: BoxFit.cover,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(_tracks[index]['title']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
-                          Text(_tracks[index]['artist']!, style: const TextStyle(color: Colors.white54, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
-                        ],
-                      ),
-                    ),
-                  );
+                  return _buildHorizontalCard(_recentTracks[index]);
                 },
               ),
             ),
 
-            const SizedBox(height: 24),
-            
+            // Раздел 2: Сетка рекомендаций
             const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24.0),
-              child: Text('Сделано для тебя', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              padding: EdgeInsets.only(left: 20, top: 30, bottom: 12),
+              child: Text('Специально для тебя', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             ),
-            const SizedBox(height: 16),
-
-            // Вертикальный список (Стиль современных плейлистов)
-            ..._tracks.map((track) {
-              return ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-                leading: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(track['img']!, width: 55, height: 55, fit: BoxFit.cover),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 15,
+                  mainAxisSpacing: 15,
+                  childAspectRatio: 0.85,
                 ),
-                title: Text(track['title']!, style: const TextStyle(fontWeight: FontWeight.w600)),
-                subtitle: Text(track['artist']!, style: const TextStyle(color: Colors.white54)),
-                trailing: const Icon(Icons.more_vert, color: Colors.white54),
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PlayerScreen())),
-              );
-            }),
+                itemCount: _recommendations.length,
+                itemBuilder: (context, index) {
+                  return _buildGridCard(_recommendations[index]);
+                },
+              ),
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  // Карточка для горизонтальной карусели
+  Widget _buildHorizontalCard(Track track) {
+    return GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PlayerScreen())),
+      child: Container(
+        width: 140,
+        margin: const EdgeInsets.symmetric(horizontal: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                // Градиентная обложка
+                Container(
+                  height: 140, width: 140,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: track.gradientColors),
+                  ),
+                ),
+                // Значок платформы (SC, YT...)
+                Positioned(
+                  bottom: 8, right: 8,
+                  child: _buildPlatformBadge(track.platform),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(track.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text(track.artist, style: const TextStyle(color: Colors.white54, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Карточка для сетки (2 колонки)
+  Widget _buildGridCard(Track track) {
+    return GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PlayerScreen())),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: Colors.white.withOpacity(0.05),
+          border: Border.all(color: Colors.white.withOpacity(0.05)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Stack(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                      gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: track.gradientColors),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 8, right: 8,
+                    child: _buildPlatformBadge(track.platform),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(track.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 4),
+                  Text(track.artist, style: const TextStyle(color: Colors.white54, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Виджет значка платформы
+  Widget _buildPlatformBadge(String platform) {
+    Color color;
+    String text;
+    if (platform == 'SC') {
+      color = Colors.orangeAccent; text = 'SC';
+    } else if (platform == 'YT') {
+      color = Colors.redAccent; text = 'YT';
+    } else {
+      color = Colors.yellow; text = 'YM';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withOpacity(0.5)),
+      ),
+      child: Text(text, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color)),
     );
   }
 
@@ -256,7 +390,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-// --- ПОЛНОЭКРАННЫЙ ПЛЕЕР ---
+// --- ПОЛНОЭКРАННЫЙ ПЛЕЕР (ОСТАЛСЯ КРАСИВЫМ) ---
 class PlayerScreen extends StatefulWidget {
   const PlayerScreen({super.key});
   @override
@@ -307,13 +441,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
           ),
         ),
         child: SafeArea(
-          // Оборачиваем в ScrollView, чтобы 100% не было желтых полос!
           child: SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
               child: Column(
                 children: [
-                  // Шапка плеера
+                  // Шапка
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     child: Row(
@@ -331,29 +464,36 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
                   const SizedBox(height: 20),
 
-                  // Большая обложка с тенью
+                  // Обложка (градиент)
                   Container(
                     height: 300, width: 300,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 30, offset: const Offset(0, 15))
+                        BoxShadow(color: Colors.pinkAccent.withOpacity(0.3), blurRadius: 40, offset: const Offset(0, 20))
                       ],
-                      image: const DecorationImage(
-                        image: NetworkImage('https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=500&auto=format&fit=crop'), 
-                        fit: BoxFit.cover,
-                      )
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft, end: Alignment.bottomRight, 
+                        colors: [Colors.pinkAccent, Colors.deepPurple]
+                      ),
                     ),
                   ),
                   
                   const SizedBox(height: 40),
 
-                  // Название и исполнитель
-                  const Column(
+                  // Инфо о треке и бейдж
+                  Column(
                     children: [
-                      Text('Её парень', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
-                      SizedBox(height: 6),
-                      Text('Shluzov', style: TextStyle(fontSize: 16, color: Colors.white54)),
+                      const Text('Её парень', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text('Shluzov', style: TextStyle(fontSize: 16, color: Colors.white54)),
+                          const SizedBox(width: 8),
+                          _buildPlatformBadge('SC'),
+                        ],
+                      ),
                     ],
                   ),
 
@@ -386,7 +526,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
                   const SizedBox(height: 30),
 
-                  // Полоса прогресса
+                  // Слайдер
                   SliderTheme(
                     data: SliderTheme.of(context).copyWith(
                       trackHeight: 4.0,
@@ -418,7 +558,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
                   const SizedBox(height: 30),
 
-                  // Кнопки управления
+                  // Управление
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
@@ -431,9 +571,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(color: Colors.white.withOpacity(0.2), blurRadius: 20)
-                            ]
+                            boxShadow: [BoxShadow(color: Colors.white.withOpacity(0.2), blurRadius: 20)]
                           ),
                           child: Icon(_isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, size: 45, color: Colors.black),
                         ),
@@ -445,7 +583,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
                   const SizedBox(height: 40),
 
-                  // Доп. кнопки
+                  // Доп кнопки
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
@@ -455,9 +593,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       IconButton(icon: const Icon(Icons.queue_music, color: Colors.white54), onPressed: () {}),
                     ],
                   ),
-                  
-                  const SizedBox(height: 20),
-                  const Text('Наушники подключены', style: TextStyle(color: Colors.white30, fontSize: 12)),
                   const SizedBox(height: 20),
                 ],
               ),
@@ -465,6 +600,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  // Бейдж (дублируется для плеера)
+  Widget _buildPlatformBadge(String platform) {
+    Color color = platform == 'SC' ? Colors.orangeAccent : (platform == 'YT' ? Colors.redAccent : Colors.yellow);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withOpacity(0.5)),
+      ),
+      child: Text(platform, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color)),
     );
   }
 }
