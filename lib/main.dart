@@ -16,13 +16,18 @@ class MyMusicApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF1A1625), // Темный фон как в RX
+        scaffoldBackgroundColor: const Color(0xFF0F0C1B), // Глубокий космический фон
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF9D4EDD), // Фиолетовый акцент
+          brightness: Brightness.dark,
+        ),
       ),
       home: const MainScreen(),
     );
   }
 }
 
+// --- ГЛАВНЫЙ ЭКРАН ---
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
   @override
@@ -32,242 +37,103 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
-  // Данные для карточек (как на 1 скрине)
+  // Треки для главной страницы
   final List<Map<String, String>> _tracks = [
-    {'title': 'гуль', 'artist': 'dabbackwood', 'img': 'https://i.pinimg.com/736x/8b/58/5e/8b585e0e3a0e7b5b5c5e5b5e5b5e5b5e.jpg'}, // Заглушка
-    {'title': 'dabbackwood - назад...', 'artist': 'dabbackwood', 'img': 'https://i.pinimg.com/736x/8b/58/5e/8b585e0e3a0e7b5b5c5e5b5e5b5e5b5e.jpg'},
-    {'title': 'хирург', 'artist': 'curdest', 'img': 'https://i.pinimg.com/736x/8b/58/5e/8b585e0e3a0e7b5b5c5e5b5e5b5e5b5e.jpg'},
-    {'title': 'Её парень', 'artist': 'Shluzov', 'img': 'https://i.pinimg.com/736x/8b/58/5e/8b585e0e3a0e7b5b5c5e5b5e5b5e5b5e.jpg'},
-    {'title': 'назад в кресты', 'artist': 'curdest', 'img': 'https://i.pinimg.com/736x/8b/58/5e/8b585e0e3a0e7b5b5c5e5b5e5b5e5b5e.jpg'},
-    {'title': 'хирург (extended)', 'artist': 'curdest', 'img': 'https://i.pinimg.com/736x/8b/58/5e/8b585e0e3a0e7b5b5c5e5b5e5b5e5b5e.jpg'},
+    {'title': 'Её парень', 'artist': 'Shluzov', 'img': 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=200&auto=format&fit=crop'},
+    {'title': 'гуль', 'artist': 'dabbackwood', 'img': 'https://images.unsplash.com/photo-1493225457124-a1a2a5f5646f?q=80&w=200&auto=format&fit=crop'},
+    {'title': 'хирург', 'artist': 'curdest', 'img': 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=200&auto=format&fit=crop'},
+    {'title': 'назад в кресты', 'artist': 'SOURCE', 'img': 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=200&auto=format&fit=crop'},
   ];
 
   @override
   Widget build(BuildContext context) {
+    // ВАЖНО: Здесь 4 экрана, чтобы не было красного экрана при нажатии на 4-ю иконку
+    final List<Widget> screens = [
+      _buildHomeTab(),
+      const Center(child: Text('Библиотека', style: TextStyle(fontSize: 24, color: Colors.white54))),
+      const Center(child: Text('Плейлисты', style: TextStyle(fontSize: 24, color: Colors.white54))),
+      const Center(child: Text('Избранное', style: TextStyle(fontSize: 24, color: Colors.white54))),
+    ];
+
     return Scaffold(
       extendBody: true,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter, end: Alignment.bottomCenter,
-            colors: [Color(0xFF241D35), Color(0xFF1A1625), Color(0xFF121016)],
-          ),
-        ),
-        child: SafeArea(
-          bottom: false,
-          child: IndexedStack(
-            index: _currentIndex,
-            children: [
-              // --- ЭКРАН 1: ГЛАВНАЯ (КОПИЯ RX) ---
-              SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 180), // Место под плеер
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Шапка
-                    Padding(
-                      padding: const EdgeInsets.only(left: 20, right: 20, top: 20),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Добрый день', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white)),
-                          CircleAvatar(
-                            backgroundColor: Colors.white.withOpacity(0.1),
-                            child: const Icon(Icons.person, color: Colors.white70),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                      child: Text('SoundCloud и аддоны: импорт и действия в RX Playa; лайки аккаунта недоступны.', style: TextStyle(color: Colors.white54, fontSize: 11)),
-                    ),
-                    
-                    // Баннер RX Wave
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      child: Container(
-                        height: 90,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          gradient: const LinearGradient(
-                            begin: Alignment.topLeft, end: Alignment.bottomRight,
-                            colors: [Color(0xFF3EB1E8), Color(0xFF9A6BC6)],
-                          ),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text('RX Wave', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
-                              Container(
-                                decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withOpacity(0.3)),
-                                child: const Icon(Icons.pause, color: Colors.white),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // Фильтры
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      child: Row(
-                        children: [
-                          _buildFilterChip('Все площадки', true),
-                          const SizedBox(width: 8),
-                          _buildFilterChip('Музыка', false),
-                          const SizedBox(width: 8),
-                          _buildFilterChip('Плейлисты', false),
-                        ],
-                      ),
-                    ),
-
-                    // Сетка карточек
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      child: GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 10,
-                          mainAxisSpacing: 10,
-                          childAspectRatio: 1.8,
-                        ),
-                        itemCount: _tracks.length,
-                        itemBuilder: (context, index) {
-                          return Container(
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2A2438),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                // Обложка
-                                ClipRRect(
-                                  borderRadius: const BorderRadius.only(topLeft: Radius.circular(12), bottomLeft: Radius.circular(12)),
-                                  child: Container(
-                                    width: 60,
-                                    color: Colors.pinkAccent, // Заглушка
-                                    child: const Icon(Icons.image, color: Colors.white54),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(_tracks[index]['title']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                        const SizedBox(height: 4),
-                                        // Плашка платформы (как на скрине SC/YT)
-                                        Row(
-                                          children: [
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                              decoration: BoxDecoration(color: Colors.orange.withOpacity(0.2), borderRadius: BorderRadius.circular(4)),
-                                              child: const Text('SC', style: TextStyle(fontSize: 8, color: Colors.orange)),
-                                            ),
-                                          ],
-                                        )
-                                      ],
-                                    ),
-                                  ),
-                                )
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Center(child: Text('Библиотека', style: TextStyle(fontSize: 24, color: Colors.white54))),
-              const Center(child: Text('Плейлисты', style: TextStyle(fontSize: 24, color: Colors.white54))),
-            ],
-          ),
-        ),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: screens,
       ),
 
-      // --- МИНИ-ПЛЕЕР И НАВИГАЦИЯ ---
+      // --- НИЖНЯЯ ПАНЕЛЬ ---
       bottomNavigationBar: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(12.0),
+          padding: const EdgeInsets.all(16.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Мини-плеер (в точности как на скрине)
+              // Мини-плеер
               GestureDetector(
-                onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const PlayerScreen()));
-                },
-                child: Container(
-                  height: 60,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2A2438).withOpacity(0.95),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white.withOpacity(0.1)),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 40, height: 40,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          image: const DecorationImage(
-                            image: NetworkImage('https://i.pinimg.com/736x/8b/58/5e/8b585e0e3a0e7b5b5c5e5b5e5b5e5b5e.jpg'), // Картинка с скрина
-                            fit: BoxFit.cover,
-                          )
-                        ),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PlayerScreen())),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
+                    child: Container(
+                      height: 65,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white.withOpacity(0.1)),
                       ),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
+                      child: Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Image.network(_tracks[0]['img']!, width: 45, height: 45, fit: BoxFit.cover),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(Icons.equalizer, size: 14, color: Colors.white70),
-                                SizedBox(width: 4),
-                                Text('Её парень', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                Text('Её парень', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                Text('Shluzov', style: TextStyle(color: Colors.white54, fontSize: 13)),
                               ],
                             ),
-                            Text('Shluzov', style: TextStyle(color: Colors.white54, fontSize: 12)),
-                          ],
-                        ),
+                          ),
+                          const Icon(Icons.pause_rounded, color: Colors.white, size: 30),
+                          const SizedBox(width: 10),
+                          const Icon(Icons.skip_next_rounded, color: Colors.white, size: 30),
+                        ],
                       ),
-                      const Icon(Icons.pause, color: Colors.white),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.skip_next, color: Colors.white),
-                    ],
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               
-              // Навигация
-              Container(
-                height: 65,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2A2438).withOpacity(0.95),
-                  borderRadius: BorderRadius.circular(32),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildNavIcon(Icons.home_filled, 0),
-                    _buildNavIcon(Icons.grid_view_rounded, 1),
-                    _buildNavIcon(Icons.album_rounded, 2),
-                    _buildNavIcon(Icons.star_rounded, 3),
-                  ],
+              // Панель навигации
+              ClipRRect(
+                borderRadius: BorderRadius.circular(32),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
+                  child: Container(
+                    height: 70,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(32),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildNavIcon(Icons.home_filled, 0),
+                        _buildNavIcon(Icons.grid_view_rounded, 1),
+                        _buildNavIcon(Icons.album_rounded, 2),
+                        _buildNavIcon(Icons.star_rounded, 3),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -277,14 +143,99 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  Widget _buildFilterChip(String text, bool isActive) {
+  // --- ДИЗАЙН ГЛАВНОГО ЭКРАНА ---
+  Widget _buildHomeTab() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: isActive ? const Color(0xFF39A9E5) : const Color(0xFF2A2438),
-        borderRadius: BorderRadius.circular(20),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: [Color(0xFF1E1338), Color(0xFF0F0C1B)],
+        ),
       ),
-      child: Text(text, style: TextStyle(color: isActive ? Colors.white : Colors.white70, fontSize: 12)),
+      child: SafeArea(
+        bottom: false,
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 180), // Отступ под плеер
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Добрый день', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
+                  CircleAvatar(
+                    backgroundColor: Colors.white.withOpacity(0.1),
+                    child: const Icon(Icons.person_outline, color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+            
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24.0),
+              child: Text('Недавно прослушано', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(height: 16),
+            
+            // Горизонтальный список больших обложек (Стиль Spotify)
+            SizedBox(
+              height: 200,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: _tracks.length,
+                itemBuilder: (context, index) {
+                  return GestureDetector(
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PlayerScreen())),
+                    child: Container(
+                      width: 140,
+                      margin: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.network(
+                              _tracks[index]['img']!,
+                              width: 140, height: 140, fit: BoxFit.cover,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(_tracks[index]['title']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          Text(_tracks[index]['artist']!, style: const TextStyle(color: Colors.white54, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            const SizedBox(height: 24),
+            
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24.0),
+              child: Text('Сделано для тебя', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(height: 16),
+
+            // Вертикальный список (Стиль современных плейлистов)
+            ..._tracks.map((track) {
+              return ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                leading: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(track['img']!, width: 55, height: 55, fit: BoxFit.cover),
+                ),
+                title: Text(track['title']!, style: const TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text(track['artist']!, style: const TextStyle(color: Colors.white54)),
+                trailing: const Icon(Icons.more_vert, color: Colors.white54),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PlayerScreen())),
+              );
+            }),
+          ],
+        ),
+      ),
     );
   }
 
@@ -292,15 +243,20 @@ class _MainScreenState extends State<MainScreen> {
     bool isActive = _currentIndex == index;
     return GestureDetector(
       onTap: () => setState(() => _currentIndex = index),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
         padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isActive ? Colors.white.withOpacity(0.15) : Colors.transparent,
+          shape: BoxShape.circle,
+        ),
         child: Icon(icon, color: isActive ? Colors.white : Colors.white54, size: 26),
       ),
     );
   }
 }
 
-// --- ЭКРАН ПЛЕЕРА (ТОЧНАЯ КОПИЯ) ---
+// --- ПОЛНОЭКРАННЫЙ ПЛЕЕР ---
 class PlayerScreen extends StatefulWidget {
   const PlayerScreen({super.key});
   @override
@@ -342,185 +298,170 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ИСПОЛЬЗУЕМ SingleChildScrollView, ЧТОБЫ УБРАТЬ ЖЕЛТЫЕ ПОЛОСЫ (OVERFLOW)
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1625),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              // Шапка плеера
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Icon(Icons.keyboard_arrow_down, size: 30, color: Colors.white),
-                    Column(
-                      children: const [
-                        Text('Playing from SoundCloud', style: TextStyle(fontSize: 11, color: Colors.white54)),
-                        SizedBox(height: 4),
-                        Icon(Icons.expand_more, size: 14, color: Colors.white54),
-                      ],
-                    ),
-                    const Icon(Icons.more_horiz, color: Colors.white),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Обложка (Квадратная, без вращения!)
-              Container(
-                height: 300, width: 300,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  image: const DecorationImage(
-                    image: NetworkImage('https://i.pinimg.com/736x/8b/58/5e/8b585e0e3a0e7b5b5c5e5b5e5b5e5b5e.jpg'), 
-                    fit: BoxFit.cover,
-                  )
-                ),
-              ),
-              
-              const SizedBox(height: 30),
-
-              // Информация о треке и кнопки справа
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter, end: Alignment.bottomCenter,
+            colors: [Color(0xFF2A1B4D), Color(0xFF0F0C1B)],
+          ),
+        ),
+        child: SafeArea(
+          // Оборачиваем в ScrollView, чтобы 100% не было желтых полос!
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Column(
+                children: [
+                  // Шапка плеера
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            Icon(Icons.equalizer, size: 18, color: Colors.white),
-                            SizedBox(width: 6),
-                            Text('Её парень', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                          ],
+                        IconButton(
+                          icon: const Icon(Icons.keyboard_arrow_down, size: 32),
+                          onPressed: () => Navigator.pop(context),
                         ),
-                        Text('Shluzov', style: TextStyle(fontSize: 16, color: Colors.white54)),
+                        const Text('Сейчас играет', style: TextStyle(fontSize: 12, color: Colors.white54, letterSpacing: 1.2)),
+                        IconButton(icon: const Icon(Icons.more_horiz), onPressed: () {}),
                       ],
                     ),
-                    Row(
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Большая обложка с тенью
+                  Container(
+                    height: 300, width: 300,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 30, offset: const Offset(0, 15))
+                      ],
+                      image: const DecorationImage(
+                        image: NetworkImage('https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=500&auto=format&fit=crop'), 
+                        fit: BoxFit.cover,
+                      )
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 40),
+
+                  // Название и исполнитель
+                  const Column(
+                    children: [
+                      Text('Её парень', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                      SizedBox(height: 6),
+                      Text('Shluzov', style: TextStyle(fontSize: 16, color: Colors.white54)),
+                    ],
+                  ),
+
+                  const SizedBox(height: 30),
+
+                  // Караоке текст
+                  SizedBox(
+                    height: 60,
+                    child: Center(
+                      child: RichText(
+                        textAlign: TextAlign.center,
+                        text: TextSpan(
+                          children: _lyrics.map((line) {
+                            bool isSinging = _currentTime >= line['start'] && _currentTime <= line['end'];
+                            bool isPast = _currentTime > line['end'];
+                            return TextSpan(
+                              text: "${line['word']} ",
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: isSinging ? Colors.cyanAccent : (isPast ? Colors.white38 : Colors.white24),
+                                shadows: isSinging ? [const Shadow(color: Colors.cyanAccent, blurRadius: 20)] : [],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 30),
+
+                  // Полоса прогресса
+                  SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      trackHeight: 4.0,
+                      thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
+                      overlayShape: const RoundSliderOverlayShape(overlayRadius: 14.0),
+                      activeTrackColor: Colors.white,
+                      inactiveTrackColor: Colors.white24,
+                      thumbColor: Colors.white,
+                    ),
+                    child: Slider(
+                      value: _currentTime.clamp(0.0, 5.0),
+                      min: 0.0,
+                      max: 5.0,
+                      onChanged: (val) => setState(() => _currentTime = val),
+                    ),
+                  ),
+                  
+                  // Тайминги
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 10),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Icon(Icons.thumb_down_alt_outlined, color: Colors.white54, size: 22),
-                        const SizedBox(width: 20),
-                        Icon(Icons.star_border_rounded, color: Colors.white54, size: 26),
-                        const SizedBox(width: 20),
-                        Icon(Icons.more_horiz, color: Colors.white54, size: 26),
+                        Text('0:53', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                        Text('-0:18', style: TextStyle(color: Colors.white54, fontSize: 12)),
                       ],
-                    )
-                  ],
-                ),
-              ),
+                    ),
+                  ),
 
-              const SizedBox(height: 30),
+                  const SizedBox(height: 30),
 
-              // Текст караоке (разбит на строки)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: RichText(
-                    textAlign: TextAlign.left,
-                    text: TextSpan(
-                      children: _lyrics.map((line) {
-                        bool isSinging = _currentTime >= line['start'] && _currentTime <= line['end'];
-                        bool isPast = _currentTime > line['end'];
-                        return TextSpan(
-                          text: "${line['word']} ",
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: isSinging ? Colors.white : (isPast ? Colors.white38 : Colors.white24),
-                            shadows: isSinging ? [const Shadow(color: Colors.cyanAccent, blurRadius: 20)] : [],
+                  // Кнопки управления
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      const Icon(Icons.shuffle, color: Colors.white54),
+                      const Icon(Icons.skip_previous_rounded, size: 45),
+                      GestureDetector(
+                        onTap: () => setState(() => _isPlaying = !_isPlaying),
+                        child: Container(
+                          height: 80, width: 80,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(color: Colors.white.withOpacity(0.2), blurRadius: 20)
+                            ]
                           ),
-                        );
-                      }).toList(),
-                    ),
+                          child: Icon(_isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, size: 45, color: Colors.black),
+                        ),
+                      ),
+                      const Icon(Icons.skip_next_rounded, size: 45),
+                      const Icon(Icons.repeat, color: Colors.white54),
+                    ],
                   ),
-                ),
-              ),
-              
-              // Вторая строчка текста (для красоты)
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('Её парень лох', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white24)),
-                ),
-              ),
 
-              const SizedBox(height: 30),
+                  const SizedBox(height: 40),
 
-              // Полоса прогресса
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    trackHeight: 4.0,
-                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
-                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 14.0),
-                    activeTrackColor: Colors.white,
-                    inactiveTrackColor: Colors.white24,
-                    thumbColor: Colors.white,
+                  // Доп. кнопки
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      IconButton(icon: const Icon(Icons.thumb_down_alt_outlined, color: Colors.white54), onPressed: () {}),
+                      IconButton(icon: const Icon(Icons.chat_bubble_outline, color: Colors.white54), onPressed: () {}),
+                      IconButton(icon: const Icon(Icons.share_outlined, color: Colors.white54), onPressed: () {}),
+                      IconButton(icon: const Icon(Icons.queue_music, color: Colors.white54), onPressed: () {}),
+                    ],
                   ),
-                  child: Slider(
-                    value: _currentTime.clamp(0.0, 5.0),
-                    min: 0.0,
-                    max: 5.0,
-                    onChanged: (val) => setState(() => _currentTime = val),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 30),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
-                    Text('0:53', style: TextStyle(color: Colors.white54, fontSize: 12)),
-                    Text('-0:18', style: TextStyle(color: Colors.white54, fontSize: 12)),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Кнопки управления
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  const Icon(Icons.skip_previous_rounded, size: 45, color: Colors.white),
-                  GestureDetector(
-                    onTap: () => setState(() => _isPlaying = !_isPlaying),
-                    child: Container(
-                      height: 80, width: 80,
-                      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                      child: Icon(_isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, size: 45, color: Colors.black),
-                    ),
-                  ),
-                  const Icon(Icons.skip_next_rounded, size: 45, color: Colors.white),
+                  
+                  const SizedBox(height: 20),
+                  const Text('Наушники подключены', style: TextStyle(color: Colors.white30, fontSize: 12)),
+                  const SizedBox(height: 20),
                 ],
               ),
-
-              const SizedBox(height: 30),
-
-              // Нижние кнопки (комментарии, трансляция, очередь)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  const Icon(Icons.comment_outlined, color: Colors.white54),
-                  const Icon(Icons.headphones_outlined, color: Colors.white54),
-                  const Icon(Icons.format_list_bulleted, color: Colors.white54),
-                ],
-              ),
-              
-              const SizedBox(height: 20),
-              const Text('Redmi Buds 6 Play', style: TextStyle(color: Colors.white30, fontSize: 12)),
-              const SizedBox(height: 20), // Отступ снизу, чтобы ничего не перекрывалось
-            ],
+            ),
           ),
         ),
       ),
