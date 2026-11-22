@@ -13,18 +13,17 @@ class MyMusicApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Storix', // Название приложения
+      title: 'Storix',
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF120E1D), 
+        scaffoldBackgroundColor: const Color(0xFF120E1D),
       ),
       home: const MainScreen(),
     );
   }
 }
 
-// --- МОДЕЛИ ДАННЫХ ---
 class Track {
   final String title;
   final String artist;
@@ -45,13 +44,14 @@ class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   late PageController _pageController;
 
+  // Надежные ссылки на картинки, которые точно загрузятся
   final List<Track> _tracks = [
-    Track('Её парень', 'Shluzov', '1:12', 'https://picsum.photos/seed/track1/200/200', 'YT'),
-    Track('заново', 'dabbackwood', '1:26', 'https://picsum.photos/seed/track2/200/200', 'SC'),
-    Track('гуль', 'dabbackwood', '1:34', 'https://picsum.photos/seed/track3/200/200', 'YT'),
-    Track('dabbackwood - назад...', 'dabbackwood', '1:29', 'https://picsum.photos/seed/track4/200/200', 'YT'),
-    Track('хирург', 'curdest', '2:05', 'https://picsum.photos/seed/track5/200/200', 'SC'),
-    Track('ФРУКТОВЫЙ', 'Unknown', '1:45', 'https://picsum.photos/seed/track6/200/200', 'YT'),
+    Track('Её парень', 'Shluzov', '1:12', 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=200&q=80', 'YT'),
+    Track('заново', 'dabbackwood', '1:26', 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=200&q=80', 'SC'),
+    Track('гуль', 'dabbackwood', '1:34', 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=200&q=80', 'YT'),
+    Track('назад в кресты', 'curdest', '1:29', 'https://images.unsplash.com/photo-1493225457124-a1a2a5f5646f?w=200&q=80', 'YT'),
+    Track('хирург', 'curdest', '2:05', 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=200&q=80', 'SC'),
+    Track('ФРУКТОВЫЙ', 'Unknown', '1:45', 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=200&q=80', 'YT'),
   ];
 
   @override
@@ -87,7 +87,7 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ),
 
-          // --- НИЖНЯЯ ПАНЕЛЬ И МИНИ-ПЛЕЕР ---
+          // --- ПАРЯЩАЯ НИЖНЯЯ ПАНЕЛЬ ---
           Positioned(
             left: 16,
             right: 16,
@@ -95,7 +95,7 @@ class _MainScreenState extends State<MainScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Мини-плеер (Liquid Glass)
+                // Мини-плеер
                 ClipRRect(
                   borderRadius: BorderRadius.circular(20),
                   child: BackdropFilter(
@@ -104,12 +104,9 @@ class _MainScreenState extends State<MainScreen> {
                       height: 65,
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.white.withOpacity(0.15), Colors.white.withOpacity(0.05)],
-                          begin: Alignment.topLeft, end: Alignment.bottomRight,
-                        ),
+                        color: Colors.white.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
+                        border: Border.all(color: Colors.white.withOpacity(0.15), width: 1),
                       ),
                       child: Row(
                         children: [
@@ -141,7 +138,7 @@ class _MainScreenState extends State<MainScreen> {
                 ),
                 const SizedBox(height: 12),
                 
-                // Навигация (Liquid Glass)
+                // Навигация
                 ClipRRect(
                   borderRadius: BorderRadius.circular(40),
                   child: BackdropFilter(
@@ -149,12 +146,9 @@ class _MainScreenState extends State<MainScreen> {
                     child: Container(
                       height: 65,
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.white.withOpacity(0.15), Colors.white.withOpacity(0.05)],
-                          begin: Alignment.topLeft, end: Alignment.bottomRight,
-                        ),
+                        color: Colors.white.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(40),
-                        border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
+                        border: Border.all(color: Colors.white.withOpacity(0.15), width: 1),
                       ),
                       child: Stack(
                         children: [
@@ -166,9 +160,8 @@ class _MainScreenState extends State<MainScreen> {
                               width: 55, height: 55,
                               margin: const EdgeInsets.symmetric(vertical: 5),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.15),
+                                color: Colors.white.withOpacity(0.1),
                                 shape: BoxShape.circle,
-                                boxShadow: [BoxShadow(color: Colors.white.withOpacity(0.1), blurRadius: 10)],
                               ),
                             ),
                           ),
@@ -209,7 +202,7 @@ class _MainScreenState extends State<MainScreen> {
 }
 
 // ==========================================
-// 1. ЭКРАН: ГЛАВНАЯ (STORIX)
+// 1. ЭКРАН: ГЛАВНАЯ (Максимально похоже на RX)
 // ==========================================
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -217,18 +210,17 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final List<Track> tracks = [
-      Track('гуль', 'dabbackwood', '', 'https://picsum.photos/seed/track3/200/200', 'YT'),
-      Track('dabbackwood - наза...', 'dabbackwood', '', 'https://picsum.photos/seed/track4/200/200', 'YT'),
-      Track('хирург', 'curdest', '', 'https://picsum.photos/seed/track5/200/200', 'SC'),
-      Track('Её парень', 'Shluzov', '', 'https://picsum.photos/seed/track1/200/200', 'YT'),
-      Track('назад в кресты', 'curdest', '', 'https://picsum.photos/seed/track2/200/200', 'YT'),
-      Track('ФРУКТОВЫЙ', 'Unknown', '', 'https://picsum.photos/seed/track6/200/200', 'YT'),
+      Track('гуль', 'dabbackwood', '', 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=200&q=80', 'YT'),
+      Track('dabbackwood - наза...', 'dabbackwood', '', 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=200&q=80', 'YT'),
+      Track('хирург', 'curdest', '', 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=200&q=80', 'SC'),
+      Track('Её парень', 'Shluzov', '', 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=200&q=80', 'YT'),
+      Track('назад в кресты', 'curdest', '', 'https://images.unsplash.com/photo-1493225457124-a1a2a5f5646f?w=200&q=80', 'YT'),
+      Track('ФРУКТОВЫЙ', 'Unknown', '', 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=200&q=80', 'YT'),
     ];
 
     return Stack(
       children: [
-        Positioned(top: -100, left: -100, child: Container(width: 400, height: 400, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.deepPurple.withOpacity(0.2), boxShadow: [BoxShadow(color: Colors.deepPurple.withOpacity(0.2), blurRadius: 150)]))),
-        Positioned(bottom: -50, right: -50, child: Container(width: 300, height: 300, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.blueAccent.withOpacity(0.1), boxShadow: [BoxShadow(color: Colors.blueAccent.withOpacity(0.1), blurRadius: 150)]))),
+        Positioned(top: -50, left: -50, child: Container(width: 300, height: 300, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.deepPurple.withOpacity(0.2), boxShadow: [BoxShadow(color: Colors.deepPurple.withOpacity(0.2), blurRadius: 150)]))),
         
         SafeArea(
           bottom: false,
@@ -267,34 +259,35 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              // Сетка карточек
+              // Сетка карточек (КАК В RX)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 2.6,
+                    crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 2.4,
                   ),
                   itemCount: tracks.length,
                   itemBuilder: (context, index) {
                     return Container(
-                      decoration: BoxDecoration(color: const Color(0xFF231C33).withOpacity(0.8), borderRadius: BorderRadius.circular(12)),
+                      decoration: BoxDecoration(color: const Color(0xFF231C33), borderRadius: BorderRadius.circular(12)),
                       child: Row(
                         children: [
+                          // Квадратная обложка слева
                           ClipRRect(
                             borderRadius: const BorderRadius.only(topLeft: Radius.circular(12), bottomLeft: Radius.circular(12)),
-                            child: Image.network(tracks[index].imageUrl, width: 65, height: double.infinity, fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Container(width: 65, color: Colors.deepPurple.withOpacity(0.5))),
+                            child: Image.network(tracks[index].imageUrl, width: 70, height: double.infinity, fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Container(width: 70, color: Colors.deepPurple.withOpacity(0.5))),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(tracks[index].title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
-                                const SizedBox(height: 4),
+                                Text(tracks[index].title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, height: 1.2), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                const SizedBox(height: 6),
                                 Row(
                                   children: [
                                     Icon(tracks[index].platform == 'YT' ? Icons.play_circle_fill_rounded : Icons.cloud, size: 14, color: tracks[index].platform == 'YT' ? Colors.redAccent : Colors.orangeAccent),
@@ -328,12 +321,12 @@ class BrowseScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final List<Map<String, dynamic>> categories = [
-      {'title': 'В дороге', 'img': 'https://picsum.photos/seed/cat1/200/200', 'color': Colors.amber},
-      {'title': 'Вечеринка', 'img': 'https://picsum.photos/seed/cat2/200/200', 'color': Colors.purpleAccent},
-      {'title': 'Грустная', 'img': 'https://picsum.photos/seed/cat3/200/200', 'color': Colors.blueGrey},
-      {'title': 'Заряд энергии', 'img': 'https://picsum.photos/seed/cat4/200/200', 'color': Colors.orangeAccent},
-      {'title': 'Концентрация', 'img': 'https://picsum.photos/seed/cat5/200/200', 'color': Colors.grey},
-      {'title': 'Отдых', 'img': 'https://picsum.photos/seed/cat6/200/200', 'color': Colors.lightBlue},
+      {'title': 'В дороге', 'img': 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=200&q=80', 'color': Colors.amber},
+      {'title': 'Вечеринка', 'img': 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=200&q=80', 'color': Colors.purpleAccent},
+      {'title': 'Грустная', 'img': 'https://images.unsplash.com/photo-1493225457124-a1a2a5f5646f?w=200&q=80', 'color': Colors.blueGrey},
+      {'title': 'Заряд энергии', 'img': 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=200&q=80', 'color': Colors.orangeAccent},
+      {'title': 'Концентрация', 'img': 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=200&q=80', 'color': Colors.grey},
+      {'title': 'Отдых', 'img': 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=200&q=80', 'color': Colors.lightBlue},
     ];
 
     return Scaffold(
@@ -445,10 +438,10 @@ class FavoritesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final List<Track> favs = [
-      Track('Её парень', 'Shluzov', '1:12', 'https://picsum.photos/seed/track1/200/200', 'YT'),
-      Track('заново', 'dabbackwood', '1:26', 'https://picsum.photos/seed/track2/200/200', 'SC'),
-      Track('гуль', 'dabbackwood', '1:34', 'https://picsum.photos/seed/track3/200/200', 'YT'),
-      Track('dabbackwood - назад...', 'dabbackwood', '1:29', 'https://picsum.photos/seed/track4/200/200', 'YT'),
+      Track('Её парень', 'Shluzov', '1:12', 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=200&q=80', 'YT'),
+      Track('заново', 'dabbackwood', '1:26', 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=200&q=80', 'SC'),
+      Track('гуль', 'dabbackwood', '1:34', 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=200&q=80', 'YT'),
+      Track('dabbackwood - назад...', 'dabbackwood', '1:29', 'https://images.unsplash.com/photo-1493225457124-a1a2a5f5646f?w=200&q=80', 'YT'),
     ];
 
     return Scaffold(
