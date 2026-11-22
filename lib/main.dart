@@ -51,7 +51,9 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  final AudioPlayer _player = AudioPlayer();
+  final StorixAudioEngine _audio = StorixAudioEngine();
+
+AudioPlayer get _player => _audio.player;
   final SoundcloudClient _scClient = SoundcloudClient();
   
   int _currentIndex = 0;
