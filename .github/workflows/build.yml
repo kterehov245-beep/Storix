@@ -13,6 +13,8 @@ jobs:
         with:
           channel: 'stable'
       - run: flutter create . --platforms=android
+      # Эта команда меняет название приложения на рабочем столе
+      - run: sed -i 's/android:label="my_music_player"/android:label="Storix"/g' android/app/src/main/AndroidManifest.xml
       - run: flutter pub get
       - run: dart run flutter_launcher_icons
       - run: flutter build apk --debug
