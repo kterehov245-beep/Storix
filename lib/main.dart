@@ -76,19 +76,39 @@ AudioPlayer get _player => _audio.player;
   }
 
   Future<void> _playTrack(Track track) async {
-    setState(() {
-      _currentTrack = track;
-      _isLoadingTrack = true;
-    });
+  setState(() {
+    _currentTrack = track;
+    _isLoadingTrack = true;
+  });
 
-    try {
-      await _player.setUrl(track.streamUrl);
-      _player.play();
-    } catch (e) {
-      debugPrint('Playback error: $e');
-    } finally {
-      if (mounted) setState(() => _isLoadingTrack = false);
+  try {
+    if (track.streamUrl.trim().isEmpty) {
+      throw Exception(
+        'Для этого трека нет доступного аудиопотока'
+      );
     }
+
+    await _audio.playUrl(track.streamUrl);
+
+  } catch (e) {
+    debugPrint('Storix playback error: $e');
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка воспроизведения: $e'),
+          backgroundColor: Colors.deepPurple,
+        ),
+      );
+    }
+
+  } finally {
+    if (mounted) {
+      setState(() {
+        _isLoadingTrack = false;
+      });
+    }
+  }
   }
 
   @override
