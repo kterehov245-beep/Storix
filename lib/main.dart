@@ -13,10 +13,11 @@ class MyMusicApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      title: 'Storix', // Название приложения
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF141026),
+        scaffoldBackgroundColor: const Color(0xFF120E1D), 
       ),
       home: const MainScreen(),
     );
@@ -29,7 +30,7 @@ class Track {
   final String artist;
   final String time;
   final String imageUrl;
-  final String platform; // 'YT', 'SC'
+  final String platform;
 
   Track(this.title, this.artist, this.time, this.imageUrl, this.platform);
 }
@@ -44,14 +45,13 @@ class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   late PageController _pageController;
 
-  // РЕАЛЬНЫЕ ТРЕКИ С РАЗНЫМИ ОБЛОЖКАМИ (Как на скринах RX)
   final List<Track> _tracks = [
-    Track('Её парень', 'Shluzov', '1:12', 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=200&q=80', 'YT'),
-    Track('заново', 'dabbackwood', '1:26', 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=200&q=80', 'SC'),
-    Track('гуль', 'dabbackwood', '1:34', 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=200&q=80', 'YT'),
-    Track('назад в кресты', 'curdest', '1:29', 'https://images.unsplash.com/photo-1493225457124-a1a2a5f5646f?w=200&q=80', 'YT'),
-    Track('хирург', 'curdest', '2:05', 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=200&q=80', 'SC'),
-    Track('ФРУКТОВЫЙ', 'Unknown', '1:45', 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=200&q=80', 'YT'),
+    Track('Её парень', 'Shluzov', '1:12', 'https://picsum.photos/seed/track1/200/200', 'YT'),
+    Track('заново', 'dabbackwood', '1:26', 'https://picsum.photos/seed/track2/200/200', 'SC'),
+    Track('гуль', 'dabbackwood', '1:34', 'https://picsum.photos/seed/track3/200/200', 'YT'),
+    Track('dabbackwood - назад...', 'dabbackwood', '1:29', 'https://picsum.photos/seed/track4/200/200', 'YT'),
+    Track('хирург', 'curdest', '2:05', 'https://picsum.photos/seed/track5/200/200', 'SC'),
+    Track('ФРУКТОВЫЙ', 'Unknown', '1:45', 'https://picsum.photos/seed/track6/200/200', 'YT'),
   ];
 
   @override
@@ -77,104 +77,120 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: (index) => setState(() => _currentIndex = index),
-        children: _screens,
-      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: PageView(
+              controller: _pageController,
+              onPageChanged: (index) => setState(() => _currentIndex = index),
+              children: _screens,
+            ),
+          ),
 
-      // --- НИЖНЯЯ ПАНЕЛЬ (ИСПРАВЛЕНА ОШИБКА OVERFLOW) ---
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min, // Запрещает колонке растягиваться больше нужного
-            children: [
-              // Мини-плеер
-              ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 25.0, sigmaY: 25.0),
-                  child: Container(
-                    height: 60,
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white.withOpacity(0.15), width: 1.5),
-                    ),
-                    child: Row(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Image.network(_tracks[0].imageUrl, width: 40, height: 40, fit: BoxFit.cover),
+          // --- НИЖНЯЯ ПАНЕЛЬ И МИНИ-ПЛЕЕР ---
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 16 + MediaQuery.of(context).padding.bottom,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Мини-плеер (Liquid Glass)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
+                    child: Container(
+                      height: 65,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.white.withOpacity(0.15), Colors.white.withOpacity(0.05)],
+                          begin: Alignment.topLeft, end: Alignment.bottomRight,
                         ),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('распять (folk remix)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                              Text('stellla и plateexx', style: TextStyle(color: Colors.white54, fontSize: 12)),
-                            ],
-                          ),
-                        ),
-                        const Icon(Icons.play_arrow_rounded, size: 32, color: Colors.white),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.skip_next_rounded, size: 32, color: Colors.white),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              
-              // Навигация с плавающей капсулой
-              ClipRRect(
-                borderRadius: BorderRadius.circular(40),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 25.0, sigmaY: 25.0),
-                  child: Container(
-                    height: 65, // Уменьшил высоту на 5px для надежности
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(40),
-                      border: Border.all(color: Colors.white.withOpacity(0.15), width: 1.5),
-                    ),
-                    child: Stack(
-                      children: [
-                        AnimatedAlign(
-                          alignment: Alignment(((_currentIndex / 2) - 1).clamp(-1.0, 1.0), 0),
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeOutQuart,
-                          child: Container(
-                            width: 55, height: 55,
-                            margin: const EdgeInsets.symmetric(vertical: 5),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.15),
-                              shape: BoxShape.circle,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
+                      ),
+                      child: Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Image.network(
+                              _tracks[0].imageUrl, width: 45, height: 45, fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Container(width: 45, height: 45, color: Colors.deepPurple),
                             ),
                           ),
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            _buildNavIcon(Icons.home_filled, 0),
-                            _buildNavIcon(Icons.grid_view_rounded, 1),
-                            _buildNavIcon(Icons.folder_rounded, 2),
-                            _buildNavIcon(Icons.star_rounded, 3),
-                            _buildNavIcon(Icons.search_rounded, 4),
-                          ],
-                        ),
-                      ],
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('распять (folk remix)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                Text('stellla и plateexx', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.play_arrow_rounded, size: 35, color: Colors.white),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.skip_next_rounded, size: 35, color: Colors.white),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                
+                // Навигация (Liquid Glass)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(40),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
+                    child: Container(
+                      height: 65,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.white.withOpacity(0.15), Colors.white.withOpacity(0.05)],
+                          begin: Alignment.topLeft, end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(40),
+                        border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
+                      ),
+                      child: Stack(
+                        children: [
+                          AnimatedAlign(
+                            alignment: Alignment(((_currentIndex / 2) - 1).clamp(-1.0, 1.0), 0),
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeOutQuart,
+                            child: Container(
+                              width: 55, height: 55,
+                              margin: const EdgeInsets.symmetric(vertical: 5),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.15),
+                                shape: BoxShape.circle,
+                                boxShadow: [BoxShadow(color: Colors.white.withOpacity(0.1), blurRadius: 10)],
+                              ),
+                            ),
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              _buildNavIcon(Icons.home_filled, 0),
+                              _buildNavIcon(Icons.grid_view_rounded, 1),
+                              _buildNavIcon(Icons.folder_rounded, 2),
+                              _buildNavIcon(Icons.star_rounded, 3),
+                              _buildNavIcon(Icons.search_rounded, 4),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -185,8 +201,7 @@ class _MainScreenState extends State<MainScreen> {
         _pageController.animateToPage(index, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
       },
       child: Container(
-        width: 55,
-        alignment: Alignment.center,
+        width: 55, alignment: Alignment.center,
         child: Icon(icon, color: _currentIndex == index ? Colors.white : Colors.white38, size: 26),
       ),
     );
@@ -194,43 +209,50 @@ class _MainScreenState extends State<MainScreen> {
 }
 
 // ==========================================
-// 1. ЭКРАН: ГЛАВНАЯ (Сетка карточек как на фото)
+// 1. ЭКРАН: ГЛАВНАЯ (STORIX)
 // ==========================================
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Данные для главной
     final List<Track> tracks = [
-      Track('гуль', 'dabbackwood', '', 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=200&q=80', 'YT'),
-      Track('dabbackwood - наза...', 'dabbackwood', '', 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=200&q=80', 'YT'),
-      Track('хирург', 'curdest', '', 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=200&q=80', 'SC'),
-      Track('Её парень', 'Shluzov', '', 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=200&q=80', 'YT'),
-      Track('назад в кресты', 'curdest', '', 'https://images.unsplash.com/photo-1493225457124-a1a2a5f5646f?w=200&q=80', 'YT'),
-      Track('ФРУКТОВЫЙ', 'Unknown', '', 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=200&q=80', 'YT'),
+      Track('гуль', 'dabbackwood', '', 'https://picsum.photos/seed/track3/200/200', 'YT'),
+      Track('dabbackwood - наза...', 'dabbackwood', '', 'https://picsum.photos/seed/track4/200/200', 'YT'),
+      Track('хирург', 'curdest', '', 'https://picsum.photos/seed/track5/200/200', 'SC'),
+      Track('Её парень', 'Shluzov', '', 'https://picsum.photos/seed/track1/200/200', 'YT'),
+      Track('назад в кресты', 'curdest', '', 'https://picsum.photos/seed/track2/200/200', 'YT'),
+      Track('ФРУКТОВЫЙ', 'Unknown', '', 'https://picsum.photos/seed/track6/200/200', 'YT'),
     ];
 
     return Stack(
       children: [
-        Positioned(top: -50, left: -50, child: Container(width: 300, height: 300, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.deepPurple.withOpacity(0.2), boxShadow: [BoxShadow(color: Colors.deepPurple.withOpacity(0.2), blurRadius: 100)]))),
+        Positioned(top: -100, left: -100, child: Container(width: 400, height: 400, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.deepPurple.withOpacity(0.2), boxShadow: [BoxShadow(color: Colors.deepPurple.withOpacity(0.2), blurRadius: 150)]))),
+        Positioned(bottom: -50, right: -50, child: Container(width: 300, height: 300, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.blueAccent.withOpacity(0.1), boxShadow: [BoxShadow(color: Colors.blueAccent.withOpacity(0.1), blurRadius: 150)]))),
+        
         SafeArea(
           bottom: false,
           child: ListView(
-            padding: const EdgeInsets.only(bottom: 180), // Отступ чтобы контент не уходил под плеер
+            padding: const EdgeInsets.only(bottom: 180),
             children: [
-              const Padding(
-                padding: EdgeInsets.all(20.0),
-                child: Text('Доброе утро', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.white)),
+              Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Row(
+                  children: [
+                    const Icon(Icons.waves_rounded, color: Colors.white, size: 35), 
+                    const SizedBox(width: 10),
+                    const Text('Storix', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1.5)),
+                  ],
+                ),
               ),
-              // Баннер RX Wave
+              // Баннер
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Container(
                   height: 100,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(24),
-                    gradient: const LinearGradient(colors: [Color(0xFF5CB8E6), Color(0xFFB39DDB)]),
+                    gradient: const LinearGradient(colors: [Color(0xFF5CB8E6), Color(0xFF9A81D7)]),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -245,18 +267,6 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              // Кнопки фильтров
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  children: [
-                    _buildChip('Все площадки', true),
-                    const SizedBox(width: 8),
-                    _buildChip('Музыка', false),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
               // Сетка карточек
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -264,22 +274,18 @@ class HomeScreen extends StatelessWidget {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 2.6, // Делает карточки горизонтальными
+                    crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 2.6,
                   ),
                   itemCount: tracks.length,
                   itemBuilder: (context, index) {
                     return Container(
-                      decoration: BoxDecoration(color: const Color(0xFF231C33), borderRadius: BorderRadius.circular(12)),
+                      decoration: BoxDecoration(color: const Color(0xFF231C33).withOpacity(0.8), borderRadius: BorderRadius.circular(12)),
                       child: Row(
                         children: [
                           ClipRRect(
                             borderRadius: const BorderRadius.only(topLeft: Radius.circular(12), bottomLeft: Radius.circular(12)),
                             child: Image.network(tracks[index].imageUrl, width: 65, height: double.infinity, fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Container(width: 65, color: Colors.grey.shade800), // Защита от ошибки
-                            ),
+                              errorBuilder: (context, error, stackTrace) => Container(width: 65, color: Colors.deepPurple.withOpacity(0.5))),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
@@ -291,7 +297,7 @@ class HomeScreen extends StatelessWidget {
                                 const SizedBox(height: 4),
                                 Row(
                                   children: [
-                                    Icon(tracks[index].platform == 'YT' ? Icons.play_arrow_rounded : Icons.cloud_queue_rounded, size: 12, color: tracks[index].platform == 'YT' ? Colors.redAccent : Colors.orangeAccent),
+                                    Icon(tracks[index].platform == 'YT' ? Icons.play_circle_fill_rounded : Icons.cloud, size: 14, color: tracks[index].platform == 'YT' ? Colors.redAccent : Colors.orangeAccent),
                                     const SizedBox(width: 4),
                                     Text(tracks[index].platform, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: tracks[index].platform == 'YT' ? Colors.redAccent : Colors.orangeAccent)),
                                   ],
@@ -311,18 +317,10 @@ class HomeScreen extends StatelessWidget {
       ],
     );
   }
-
-  Widget _buildChip(String text, bool isActive) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(color: isActive ? const Color(0xFF3EB1E8) : const Color(0xFF231C33), borderRadius: BorderRadius.circular(20)),
-      child: Text(text, style: TextStyle(color: isActive ? Colors.white : Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
-    );
-  }
 }
 
 // ==========================================
-// 2. ЭКРАН: ОБЗОР (Как на фото, картинки на фоне)
+// 2. ЭКРАН: ОБЗОР
 // ==========================================
 class BrowseScreen extends StatelessWidget {
   const BrowseScreen({super.key});
@@ -330,12 +328,12 @@ class BrowseScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final List<Map<String, dynamic>> categories = [
-      {'title': 'В дороге', 'img': 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=200&q=80', 'color': Colors.amber},
-      {'title': 'Вечеринка', 'img': 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=200&q=80', 'color': Colors.purpleAccent},
-      {'title': 'Грустная', 'img': 'https://images.unsplash.com/photo-1493225457124-a1a2a5f5646f?w=200&q=80', 'color': Colors.blueGrey},
-      {'title': 'Заряд энергии', 'img': 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=200&q=80', 'color': Colors.orangeAccent},
-      {'title': 'Концентрация', 'img': 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=200&q=80', 'color': Colors.grey},
-      {'title': 'Отдых', 'img': 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=200&q=80', 'color': Colors.lightBlue},
+      {'title': 'В дороге', 'img': 'https://picsum.photos/seed/cat1/200/200', 'color': Colors.amber},
+      {'title': 'Вечеринка', 'img': 'https://picsum.photos/seed/cat2/200/200', 'color': Colors.purpleAccent},
+      {'title': 'Грустная', 'img': 'https://picsum.photos/seed/cat3/200/200', 'color': Colors.blueGrey},
+      {'title': 'Заряд энергии', 'img': 'https://picsum.photos/seed/cat4/200/200', 'color': Colors.orangeAccent},
+      {'title': 'Концентрация', 'img': 'https://picsum.photos/seed/cat5/200/200', 'color': Colors.grey},
+      {'title': 'Отдых', 'img': 'https://picsum.photos/seed/cat6/200/200', 'color': Colors.lightBlue},
     ];
 
     return Scaffold(
@@ -352,10 +350,7 @@ class BrowseScreen extends StatelessWidget {
                 child: GridView.builder(
                   physics: const BouncingScrollPhysics(),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 1.6,
+                    crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 1.6,
                   ),
                   itemCount: categories.length,
                   itemBuilder: (context, index) {
@@ -366,12 +361,9 @@ class BrowseScreen extends StatelessWidget {
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          // Картинка на весь фон
                           Image.network(cat['img'], fit: BoxFit.cover, 
                             errorBuilder: (context, error, stackTrace) => Container(color: cat['color'].withOpacity(0.3))),
-                          // Затемнение, чтобы текст читался
                           Container(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.black.withOpacity(0.1), Colors.black.withOpacity(0.7)]))),
-                          // Текст
                           Padding(
                             padding: const EdgeInsets.all(16.0),
                             child: Text(cat['title'], style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
@@ -445,7 +437,7 @@ class LibraryScreen extends StatelessWidget {
 }
 
 // ==========================================
-// 4. ЭКРАН: ЛЮБИМОЕ (Скрин 5)
+// 4. ЭКРАН: ЛЮБИМОЕ
 // ==========================================
 class FavoritesScreen extends StatelessWidget {
   const FavoritesScreen({super.key});
@@ -453,10 +445,10 @@ class FavoritesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final List<Track> favs = [
-      Track('Её парень', 'Shluzov', '1:12', 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=200&q=80', 'YT'),
-      Track('заново', 'dabbackwood', '1:26', 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=200&q=80', 'SC'),
-      Track('гуль', 'dabbackwood', '1:34', 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=200&q=80', 'YT'),
-      Track('dabbackwood - назад...', 'dabbackwood', '1:29', 'https://images.unsplash.com/photo-1493225457124-a1a2a5f5646f?w=200&q=80', 'YT'),
+      Track('Её парень', 'Shluzov', '1:12', 'https://picsum.photos/seed/track1/200/200', 'YT'),
+      Track('заново', 'dabbackwood', '1:26', 'https://picsum.photos/seed/track2/200/200', 'SC'),
+      Track('гуль', 'dabbackwood', '1:34', 'https://picsum.photos/seed/track3/200/200', 'YT'),
+      Track('dabbackwood - назад...', 'dabbackwood', '1:29', 'https://picsum.photos/seed/track4/200/200', 'YT'),
     ];
 
     return Scaffold(
