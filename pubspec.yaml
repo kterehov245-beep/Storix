@@ -11,7 +11,7 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.2
   just_audio: ^0.9.36
-  soundcloud_explode_dart: ^2.0.0
+  soundcloud_explode_dart: ^1.1.0
   flutter_launcher_icons: ^0.13.1
 
 dev_dependencies:
