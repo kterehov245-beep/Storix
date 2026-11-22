@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:youtube_explode_dart/youtube_explode_dart.dart';
+import 'package:soundcloud_explode_dart/soundcloud_explode_dart.dart';
 
 void main() {
   runApp(const MyMusicApp());
@@ -30,9 +30,16 @@ class Track {
   final String title;
   final String artist;
   final String thumbnail;
-  final String videoId;
+  final String streamUrl;
+  final Duration duration;
 
-  Track({required this.title, required this.artist, required this.thumbnail, required this.videoId});
+  Track({
+    required this.title,
+    required this.artist,
+    required this.thumbnail,
+    required this.streamUrl,
+    required this.duration,
+  });
 }
 
 // --- ГЛАВНЫЙ ЭКРАН ---
@@ -44,17 +51,28 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   final AudioPlayer _player = AudioPlayer();
+  final SoundcloudClient _scClient = SoundcloudClient();
+  
   int _currentIndex = 0;
+  late PageController _pageController;
+  
   Track? _currentTrack;
   bool _isLoadingTrack = false;
 
   @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: _currentIndex);
+  }
+
+  @override
   void dispose() {
+    _pageController.dispose();
     _player.dispose();
     super.dispose();
   }
 
-  // ПЛЕЙ ТРЕКА (Извлекаем аудио с YouTube)
+  // ПЛЕЙ ТРЕКА (SoundCloud)
   Future<void> _playTrack(Track track) async {
     setState(() {
       _currentTrack = track;
@@ -62,16 +80,9 @@ class _MainScreenState extends State<MainScreen> {
     });
 
     try {
-      final yt = YoutubeExplode();
-      // Получаем манифест всех потоков видео
-      final streamManifest = await yt.videos.streams.getManifest(track.videoId);
-      // Берем только аудио (наивысшее качество)
-      final audioStreamInfo = streamManifest.audioOnly.withHighestBitrate();
-      
-      await _player.setUrl(audioStreamInfo.url.toString());
+      // Устанавливаем прямой URL аудиопотока
+      await _player.setUrl(track.streamUrl);
       _player.play();
-      
-      yt.close();
     } catch (e) {
       debugPrint('Playback error: $e');
     } finally {
@@ -85,20 +96,21 @@ class _MainScreenState extends State<MainScreen> {
       body: Stack(
         children: [
           const AppBackground(),
+          
           Positioned.fill(
-            child: IndexedStack(
-              index: _currentIndex,
+            child: PageView(
+              controller: _pageController,
+              onPageChanged: (index) => setState(() => _currentIndex = index),
               children: [
                 const Center(child: Text('Добро пожаловать в Storix!\nПерейди во вкладку поиска (лупа).', textAlign: TextAlign.center, style: TextStyle(color: Colors.white54))),
                 const Center(child: Text('Обзор', style: TextStyle(color: Colors.white54))),
                 const Center(child: Text('Библиотека', style: TextStyle(color: Colors.white54))),
                 const Center(child: Text('Избранное', style: TextStyle(color: Colors.white54))),
-                SearchScreen(onPlay: _playTrack),
+                SearchScreen(onPlay: _playTrack, scClient: _scClient),
               ],
             ),
           ),
           
-          // Мини-плеер и Навигация
           Positioned(
             left: 16, right: 16,
             bottom: 16 + MediaQuery.of(context).padding.bottom,
@@ -158,7 +170,6 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                 const SizedBox(height: 12),
                 
-                // Навигация
                 ClipRRect(
                   borderRadius: BorderRadius.circular(40),
                   child: BackdropFilter(
@@ -170,15 +181,50 @@ class _MainScreenState extends State<MainScreen> {
                         borderRadius: BorderRadius.circular(40),
                         border: Border.all(color: Colors.white.withOpacity(0.25), width: 1.5),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          _navIcon(Icons.home_filled, 0),
-                          _navIcon(Icons.grid_view_rounded, 1),
-                          _navIcon(Icons.folder_rounded, 2),
-                          _navIcon(Icons.star_rounded, 3),
-                          _navIcon(Icons.search_rounded, 4),
-                        ],
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final double itemWidth = constraints.maxWidth / 5;
+                          const double circleSize = 55.0;
+
+                          return Stack(
+                            children: [
+                              AnimatedBuilder(
+                                animation: _pageController,
+                                builder: (context, child) {
+                                  double currentPage = _currentIndex.toDouble();
+                                  if (_pageController.hasClients && _pageController.position.haveDimensions) {
+                                    currentPage = _pageController.page ?? _currentIndex.toDouble();
+                                  }
+                                  double leftOffset = (itemWidth * currentPage) + (itemWidth / 2) - (circleSize / 2);
+                                  
+                                  return Positioned(
+                                    left: leftOffset,
+                                    top: (70 - circleSize) / 2,
+                                    child: Container(
+                                      width: circleSize,
+                                      height: circleSize,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.15),
+                                        shape: BoxShape.circle,
+                                        boxShadow: [BoxShadow(color: Colors.white.withOpacity(0.1), blurRadius: 10, spreadRadius: 2)],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  _navIcon(Icons.home_filled, 0),
+                                  _navIcon(Icons.grid_view_rounded, 1),
+                                  _navIcon(Icons.folder_rounded, 2),
+                                  _navIcon(Icons.star_rounded, 3),
+                                  _navIcon(Icons.search_rounded, 4),
+                                ],
+                              ),
+                            ],
+                          );
+                        }
                       ),
                     ),
                   ),
@@ -194,8 +240,13 @@ class _MainScreenState extends State<MainScreen> {
   Widget _navIcon(IconData icon, int index) {
     final active = _currentIndex == index;
     return GestureDetector(
-      onTap: () => setState(() => _currentIndex = index),
-      child: Icon(icon, color: active ? Colors.white : Colors.white38, size: 26),
+      onTap: () {
+        _pageController.animateToPage(index, duration: const Duration(milliseconds: 300), curve: Curves.easeOutQuart);
+      },
+      child: SizedBox(
+        width: 55,
+        child: Icon(icon, color: active ? Colors.white : Colors.white38, size: 26),
+      ),
     );
   }
 }
@@ -217,10 +268,13 @@ class AppBackground extends StatelessWidget {
   }
 }
 
-// --- ПОИСК (ВСТРОЕННЫЙ YOUTUBE) ---
+// --- ПОИСК (SOUNDCLOUD) ---
 class SearchScreen extends StatefulWidget {
   final Function(Track) onPlay;
-  const SearchScreen({super.key, required this.onPlay});
+  final SoundcloudClient scClient;
+  
+  const SearchScreen({super.key, required this.onPlay, required this.scClient});
+
   @override
   State<SearchScreen> createState() => _SearchScreenState();
 }
@@ -235,19 +289,36 @@ class _SearchScreenState extends State<SearchScreen> {
     setState(() { _isLoading = true; _results = []; });
     
     try {
-      final yt = YoutubeExplode();
-      // Ищем видео по запросу
-      final searchList = await yt.search.search(query);
-      
+      // Ищем треки на SoundCloud
+      final stream = widget.scClient.search(query, searchFilter: SearchFilter.tracks);
+      final trackResults = await stream.first; // Берем первую пачку результатов
+
+      List<Track> foundTracks = [];
+      for (var result in trackResults) {
+        if (result is TrackSearchResult) {
+          final track = result.track;
+          // Получаем информацию о потоках для каждого трека
+          final streams = await widget.scClient.tracks.getStreams(track.id);
+          // Ищем MP3 поток
+          final streamInfo = streams.firstWhere(
+            (s) => s.container == Container.mp3, 
+            orElse: () => streams.first
+          );
+
+          foundTracks.add(Track(
+            title: track.title,
+            artist: track.user.username,
+            thumbnail: track.artworkUrl ?? '',
+            streamUrl: streamInfo.url.toString(),
+            duration: track.duration,
+          ));
+        }
+      }
+
       setState(() {
-        _results = searchList.take(10).map((video) => Track(
-          title: video.title,
-          artist: video.author,
-          thumbnail: video.thumbnails.mediumResUrl,
-          videoId: video.id.value,
-        )).toList();
+        _results = foundTracks;
       });
-      yt.close();
+
     } catch (e) {
       debugPrint('Search error: $e');
     } finally {
@@ -269,7 +340,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 controller: _controller,
                 onSubmitted: _search,
                 decoration: InputDecoration(
-                  hintText: 'Поиск полных треков...',
+                  hintText: 'Поиск треков на SoundCloud...',
                   hintStyle: const TextStyle(color: Colors.white54),
                   prefixIcon: const Icon(Icons.search, color: Colors.white54),
                   filled: true, fillColor: const Color(0xFF231C33).withOpacity(0.8),
@@ -348,7 +419,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   stream: widget.player.positionStream,
                   builder: (context, snapshot) {
                     final position = snapshot.data ?? Duration.zero;
-                    final duration = widget.player.duration ?? const Duration(minutes: 1);
+                    final duration = widget.player.duration ?? widget.track.duration;
                     final max = duration.inMilliseconds.toDouble();
                     final value = position.inMilliseconds.toDouble().clamp(0.0, max);
                     return Column(
