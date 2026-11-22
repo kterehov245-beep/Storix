@@ -13,6 +13,46 @@ jobs:
         with:
           channel: 'stable'
       - run: flutter create . --platforms=android
+      
+      - name: Install Android SDK 36
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0"
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("android/app/build.gradle")
+          if not path.exists():
+              path = Path("android/app/build.gradle.kts")
+
+          if not path.exists():
+              raise SystemExit("Android Gradle file not found")
+
+          lines = path.read_text().splitlines()
+          found = False
+
+          for i, line in enumerate(lines):
+              stripped = line.strip()
+              indent = line[:len(line) - len(line.lstrip())]
+
+              if stripped.startswith("compileSdkVersion"):
+                  lines[i] = indent + "compileSdkVersion 36"
+                  found = True
+                  break
+
+              if stripped.startswith("compileSdk") and "=" in stripped:
+                  lines[i] = indent + "compileSdk = 36"
+                  found = True
+                  break
+
+          if not found:
+              raise SystemExit("compileSdk setting not found")
+
+          path.write_text("\n".join(lines) + "\n")
+          print("compileSdk successfully set to 36")
+          PY
+
       # Эта команда меняет название приложения на рабочем столе
       - run: sed -i 's/android:label="my_music_player"/android:label="Storix"/g' android/app/src/main/AndroidManifest.xml
       - run: flutter pub get
