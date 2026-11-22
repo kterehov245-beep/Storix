@@ -71,7 +71,7 @@ AudioPlayer get _player => _audio.player;
   @override
   void dispose() {
     _pageController.dispose();
-    _player.dispose();
+    _audio.dispose();
     super.dispose();
   }
 
