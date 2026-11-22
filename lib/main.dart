@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:soundcloud_explode_dart/soundcloud_explode_dart.dart';
+import 'package:glass_liquid_navbar/glass_liquid_navbar.dart'; // Импорт навигации
 
 void main() {
   runApp(const MyMusicApp());
@@ -91,6 +92,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true, // ВАЖНО для работы Liquid Glass навигации
       body: Stack(
         children: [
           const AppBackground(),
@@ -100,150 +102,88 @@ class _MainScreenState extends State<MainScreen> {
               controller: _pageController,
               onPageChanged: (index) => setState(() => _currentIndex = index),
               children: [
-                const Center(child: Text('Добро пожаловать в Storix!\nПерейди во вкладку поиска (лупа).', textAlign: TextAlign.center, style: TextStyle(color: Colors.white54))),
-                const Center(child: Text('Обзор', style: TextStyle(color: Colors.white54))),
-                const Center(child: Text('Библиотека', style: TextStyle(color: Colors.white54))),
-                const Center(child: Text('Избранное', style: TextStyle(color: Colors.white54))),
+                HomeScreen(onPlay: _playTrack),
+                const BrowseScreen(),
+                const LibraryScreen(),
+                const FavoritesScreen(),
                 SearchScreen(onPlay: _playTrack, scClient: _scClient),
               ],
             ),
           ),
           
-          Positioned(
-            left: 16, right: 16,
-            bottom: 16 + MediaQuery.of(context).padding.bottom,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (_currentTrack != null)
-                  GestureDetector(
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerScreen(track: _currentTrack!, player: _player))),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(24),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                        child: Container(
-                          height: 65,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.5),
-                          ),
-                          child: Row(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.network(_currentTrack!.thumbnail, width: 45, height: 45, fit: BoxFit.cover, errorBuilder: (_,__,___) => Container(width: 45, height: 45, color: Colors.deepPurple)),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(_currentTrack!.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                    Text(_currentTrack!.artist, style: const TextStyle(color: Colors.white70, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                  ],
-                                ),
-                              ),
-                              if (_isLoadingTrack)
-                                const SizedBox(width: 30, height: 30, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                              else
-                                StreamBuilder<PlayerState>(
-                                  stream: _player.playerStateStream,
-                                  builder: (context, snapshot) {
-                                    final playing = snapshot.data?.playing ?? false;
-                                    return IconButton(
-                                      icon: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded, size: 35, color: Colors.white),
-                                      onPressed: () => playing ? _player.pause() : _player.play(),
-                                    );
-                                  },
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 12),
-                
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(40),
+          // Мини-плеер
+          if (_currentTrack != null)
+            Positioned(
+              left: 16, right: 16,
+              bottom: 90 + MediaQuery.of(context).padding.bottom,
+              child: GestureDetector(
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerScreen(track: _currentTrack!, player: _player))),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
                     child: Container(
-                      height: 70,
+                      height: 65,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(40),
-                        border: Border.all(color: Colors.white.withOpacity(0.25), width: 1.5),
+                        color: Colors.white.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.5),
                       ),
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          final double itemWidth = constraints.maxWidth / 5;
-                          const double circleSize = 55.0;
-
-                          return Stack(
-                            children: [
-                              AnimatedBuilder(
-                                animation: _pageController,
-                                builder: (context, child) {
-                                  double currentPage = _currentIndex.toDouble();
-                                  if (_pageController.hasClients && _pageController.position.haveDimensions) {
-                                    currentPage = _pageController.page ?? _currentIndex.toDouble();
-                                  }
-                                  double leftOffset = (itemWidth * currentPage) + (itemWidth / 2) - (circleSize / 2);
-                                  
-                                  return Positioned(
-                                    left: leftOffset,
-                                    top: (70 - circleSize) / 2,
-                                    child: Container(
-                                      width: circleSize,
-                                      height: circleSize,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.15),
-                                        shape: BoxShape.circle,
-                                        boxShadow: [BoxShadow(color: Colors.white.withOpacity(0.1), blurRadius: 10, spreadRadius: 2)],
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                children: [
-                                  _navIcon(Icons.home_filled, 0),
-                                  _navIcon(Icons.grid_view_rounded, 1),
-                                  _navIcon(Icons.folder_rounded, 2),
-                                  _navIcon(Icons.star_rounded, 3),
-                                  _navIcon(Icons.search_rounded, 4),
-                                ],
-                              ),
-                            ],
-                          );
-                        }
+                      child: Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(_currentTrack!.thumbnail, width: 45, height: 45, fit: BoxFit.cover, errorBuilder: (_,__,___) => Container(width: 45, height: 45, color: Colors.deepPurple)),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(_currentTrack!.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                Text(_currentTrack!.artist, style: const TextStyle(color: Colors.white70, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              ],
+                            ),
+                          ),
+                          if (_isLoadingTrack)
+                            const SizedBox(width: 30, height: 30, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          else
+                            StreamBuilder<PlayerState>(
+                              stream: _player.playerStateStream,
+                              builder: (context, snapshot) {
+                                final playing = snapshot.data?.playing ?? false;
+                                return IconButton(
+                                  icon: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded, size: 35, color: Colors.white),
+                                  onPressed: () => playing ? _player.pause() : _player.play(),
+                                );
+                              },
+                            ),
+                        ],
                       ),
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
         ],
       ),
-    );
-  }
-
-  Widget _navIcon(IconData icon, int index) {
-    final active = _currentIndex == index;
-    return GestureDetector(
-      onTap: () {
-        _pageController.animateToPage(index, duration: const Duration(milliseconds: 300), curve: Curves.easeOutQuart);
-      },
-      child: SizedBox(
-        width: 55,
-        child: Icon(icon, color: active ? Colors.white : Colors.white38, size: 26),
+      
+      // НОВАЯ LIQUID GLASS НАВИГАЦИЯ
+      bottomNavigationBar: LiquidGlassNavbar(
+        currentIndex: _currentIndex,
+        onTap: (index) {
+          setState(() => _currentIndex = index);
+          _pageController.jumpToPage(index); // jumpToPage для мгновенного переключения
+        },
+        items: const [
+          LiquidNavItem(icon: Icons.home_rounded, label: 'Главная'),
+          LiquidNavItem(icon: Icons.grid_view_rounded, label: 'Обзор'),
+          LiquidNavItem(icon: Icons.folder_rounded, label: 'Библиотека'),
+          LiquidNavItem(icon: Icons.star_rounded, label: 'Избранное'),
+          LiquidNavItem(icon: Icons.search_rounded, label: 'Поиск'),
+        ],
       ),
     );
   }
@@ -266,11 +206,70 @@ class AppBackground extends StatelessWidget {
   }
 }
 
-// --- ПОИСК (SOUNDCLOUD) ---
+// --- НАПОЛНЕННЫЕ РАЗДЕЛЫ ---
+class HomeScreen extends StatelessWidget {
+  final Function(Track) onPlay;
+  const HomeScreen({super.key, required this.onPlay});
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      bottom: false,
+      child: ListView(
+        padding: const EdgeInsets.only(bottom: 180),
+        children: [
+          const Padding(
+            padding: EdgeInsets.all(20.0),
+            child: Row(
+              children: [
+                Icon(Icons.waves_rounded, color: Colors.white, size: 35),
+                SizedBox(width: 10),
+                Text('Storix', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white)),
+              ],
+            ),
+          ),
+          // Пример контента
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Container(
+              height: 100,
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), gradient: const LinearGradient(colors: [Color(0xFF5CB8E6), Color(0xFF9A81D7)])),
+              child: const Center(child: Text('Добро пожаловать в Storix!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white))),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class BrowseScreen extends StatelessWidget {
+  const BrowseScreen({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return const SafeArea(child: Center(child: Text('Обзор (скоро здесь появятся подборки)', style: TextStyle(color: Colors.white54))));
+  }
+}
+
+class LibraryScreen extends StatelessWidget {
+  const LibraryScreen({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return const SafeArea(child: Center(child: Text('Библиотека (ваши плейлисты)', style: TextStyle(color: Colors.white54))));
+  }
+}
+
+class FavoritesScreen extends StatelessWidget {
+  const FavoritesScreen({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return const SafeArea(child: Center(child: Text('Избранное (треки, которые вам понравились)', style: TextStyle(color: Colors.white54))));
+  }
+}
+
+// --- ПОИСК С ИСПРАВЛЕННЫМ SOUNDCLOUD ---
 class SearchScreen extends StatefulWidget {
   final Function(Track) onPlay;
   final SoundcloudClient scClient;
-  
   const SearchScreen({super.key, required this.onPlay, required this.scClient});
 
   @override
@@ -294,20 +293,24 @@ class _SearchScreenState extends State<SearchScreen> {
       for (var result in trackResults) {
         if (result is TrackSearchResult) {
           final track = result;
-          
-          final streams = await widget.scClient.tracks.getStreams(track.id);
-          final streamInfo = streams.firstWhere(
-            (s) => s.container == 'mp3' || s.container == 'audio/mpeg', 
-            orElse: () => streams.first
-          );
+          try {
+            final streams = await widget.scClient.tracks.getStreams(track.id);
+            final streamInfo = streams.firstWhere(
+              (s) => s.container == 'mp3' || s.container == 'audio/mpeg', 
+              orElse: () => streams.first
+            );
 
-          foundTracks.add(Track(
-            title: track.title,
-            artist: track.user.username,
-            thumbnail: track.artworkUrl?.toString() ?? '',
-            streamUrl: streamInfo.url.toString(),
-            duration: Duration(milliseconds: (track.duration * 1000).toInt()),
-          ));
+            foundTracks.add(Track(
+              title: track.title,
+              artist: track.user.username,
+              thumbnail: track.artworkUrl?.toString() ?? '',
+              streamUrl: streamInfo.url.toString(),
+              duration: Duration(milliseconds: (track.duration * 1000).toInt()),
+            ));
+          } catch (e) {
+            // Если для трека нет доступного потока (например, требуется SoundCloud Go), пропускаем его
+            debugPrint('Skipping track ${track.title}: $e');
+          }
         }
       }
 
