@@ -78,6 +78,7 @@ AudioPlayer get _player => _audio.player;
   }
 
   Future<void> _playTrack(Track track) async {
+      PlaybackController.instance.onTrackStarted(track, _player, _playTrack);
   setState(() {
     _currentTrack = track;
     _isLoadingTrack = true;
