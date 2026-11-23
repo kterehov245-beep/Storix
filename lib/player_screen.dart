@@ -3,7 +3,7 @@ import 'dart:ui' show FontFeature, ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 
-import 'library_screen.dart' show LibraryStore;
+import 'library_screen.dart' show LibraryStore, PlaybackController;
 import 'main.dart' show Track;
 
 // --- ПОЛНОЭКРАННЫЙ ПЛЕЕР ---
@@ -23,12 +23,15 @@ class NowPlayingScreen extends StatefulWidget {
 class _NowPlayingScreenState extends State<NowPlayingScreen> {
   static const Color _base = Color(0xFF0F0F1B);
 
-  bool get _hasArt => widget.track.thumbnail.trim().isNotEmpty;
+  // Текущий трек берём из контроллера, чтобы экран обновлялся при переключении.
+  Track get _track => PlaybackController.instance.current ?? widget.track;
+
+  bool get _hasArt => _track.thumbnail.trim().isNotEmpty;
 
   // Оттенок зависит от названия: один и тот же трек всегда одного цвета.
   double get _hue {
     var hash = 0;
-    for (final unit in widget.track.title.codeUnits) {
+    for (final unit in _track.title.codeUnits) {
       hash = (hash * 31 + unit) & 0x7fffffff;
     }
     return (hash % 360).toDouble();
@@ -39,21 +42,13 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   Color get _accentDark =>
       HSLColor.fromAHSL(1, (_hue + 40) % 360, 0.70, 0.28).toColor();
 
-  void _skip(int seconds) {
-    final total = widget.player.duration ?? widget.track.duration;
-    var target = widget.player.position + Duration(seconds: seconds);
-    if (target < Duration.zero) target = Duration.zero;
-    if (total > Duration.zero && target > total) target = total;
-    widget.player.seek(target);
-  }
-
   Widget _buildBackground() {
     if (_hasArt) {
       return Stack(
         fit: StackFit.expand,
         children: [
           Image.network(
-            widget.track.thumbnail,
+            _track.thumbnail,
             fit: BoxFit.cover,
             errorBuilder: (_, __, ___) => const SizedBox.shrink(),
           ),
@@ -90,7 +85,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                 ),
           image: _hasArt
               ? DecorationImage(
-                  image: NetworkImage(widget.track.thumbnail),
+                  image: NetworkImage(_track.thumbnail),
                   fit: BoxFit.cover,
                   onError: (_, __) {},
                 )
@@ -120,17 +115,18 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     return ListenableBuilder(
       listenable: LibraryStore.instance,
       builder: (context, _) {
+        final track = _track;
         final inLibrary = LibraryStore.instance.tracks
-            .any((t) => t.streamUrl == widget.track.streamUrl);
+            .any((t) => t.streamUrl == track.streamUrl);
         if (!inLibrary) return const SizedBox.shrink();
-        final isFav = LibraryStore.instance.isFavorite(widget.track);
+        final isFav = LibraryStore.instance.isFavorite(track);
         return IconButton(
           iconSize: 30,
           icon: Icon(
             isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
             color: isFav ? Colors.pinkAccent : Colors.white70,
           ),
-          onPressed: () => LibraryStore.instance.toggleFavorite(widget.track),
+          onPressed: () => LibraryStore.instance.toggleFavorite(track),
         );
       },
     );
@@ -141,7 +137,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
       stream: widget.player.positionStream,
       builder: (context, snapshot) {
         final position = snapshot.data ?? Duration.zero;
-        final duration = widget.player.duration ?? widget.track.duration;
+        final duration = widget.player.duration ?? _track.duration;
         final maxMs = duration.inMilliseconds.toDouble();
         final valueMs =
             position.inMilliseconds.toDouble().clamp(0.0, maxMs).toDouble();
@@ -198,7 +194,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             processing == ProcessingState.buffering;
         final completed = processing == ProcessingState.completed;
 
-        IconData icon = playing ? Icons.pause_rounded : Icons.play_arrow_rounded;
+        IconData icon =
+            playing ? Icons.pause_rounded : Icons.play_arrow_rounded;
         if (completed) icon = Icons.replay_rounded;
 
         return Container(
@@ -238,93 +235,101 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final title = widget.track.title.replaceAll('_', ' ');
+    return ListenableBuilder(
+      listenable: PlaybackController.instance,
+      builder: (context, _) {
+        final track = _track;
+        final controller = PlaybackController.instance;
 
-    return Scaffold(
-      backgroundColor: _base,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          _buildBackground(),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  IconButton(
-                    iconSize: 34,
-                    color: Colors.white,
-                    icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Center(child: _buildCover()),
-                    ),
-                  ),
-                  Row(
+        return Scaffold(
+          backgroundColor: _base,
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              _buildBackground(),
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      IconButton(
+                        iconSize: 34,
+                        color: Colors.white,
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                        onPressed: () => Navigator.pop(context),
+                      ),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w800,
-                                height: 1.15,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              widget.track.artist,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                color: Colors.white60,
-                              ),
-                            ),
-                          ],
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Center(child: _buildCover()),
                         ),
                       ),
-                      _buildHeart(),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  track.title,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w800,
+                                    height: 1.15,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  track.artist,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.white60,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          _buildHeart(),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      _buildProgress(),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          IconButton(
+                            iconSize: 46,
+                            color: Colors.white,
+                            icon: const Icon(Icons.skip_previous_rounded),
+                            onPressed: () => controller.previous(),
+                          ),
+                          _buildPlayButton(),
+                          IconButton(
+                            iconSize: 46,
+                            color: Colors.white,
+                            disabledColor: Colors.white24,
+                            icon: const Icon(Icons.skip_next_rounded),
+                            onPressed:
+                                controller.hasNext ? () => controller.next() : null,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 32),
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  _buildProgress(),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      IconButton(
-                        iconSize: 38,
-                        color: Colors.white,
-                        icon: const Icon(Icons.replay_10_rounded),
-                        onPressed: () => _skip(-10),
-                      ),
-                      _buildPlayButton(),
-                      IconButton(
-                        iconSize: 38,
-                        color: Colors.white,
-                        icon: const Icon(Icons.forward_10_rounded),
-                        onPressed: () => _skip(10),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
