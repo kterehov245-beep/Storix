@@ -1,4 +1,4 @@
-.import 'dart:ui';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:soundcloud_explode_dart/soundcloud_explode_dart.dart';
