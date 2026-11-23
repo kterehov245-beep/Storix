@@ -1,4 +1,4 @@
-import 'dart:ui';
+.import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:soundcloud_explode_dart/soundcloud_explode_dart.dart';
@@ -145,7 +145,7 @@ AudioPlayer get _player => _audio.player;
               left: 16, right: 16,
               bottom: 90 + MediaQuery.of(context).padding.bottom,
               child: GestureDetector(
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerScreen(track: _currentTrack!, player: _player))),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => NowPlayingScreen(track: _currentTrack!, player: _player))),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(24),
                   child: BackdropFilter(
