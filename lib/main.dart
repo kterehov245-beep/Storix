@@ -126,7 +126,7 @@ AudioPlayer get _player => _audio.player;
               children: [
                 HomeScreen(onPlay: _playTrack),
                 const BrowseScreen(),
-                const LibraryScreen(),
+                LocalLibraryScreen(onPlay: _playTrack),
                 const FavoritesScreen(),
                 SearchScreen(onPlay: _playTrack, scClient: _scClient),
               ],
