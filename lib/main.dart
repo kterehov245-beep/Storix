@@ -88,7 +88,12 @@ AudioPlayer get _player => _audio.player;
       );
     }
 
-    await _audio.playUrl(track.streamUrl);
+    if (track.streamUrl.startsWith('http')) {
+  await _audio.playUrl(track.streamUrl);
+} else {
+  await _player.setFilePath(track.streamUrl);
+  _player.play();
+    }
 
   } catch (e) {
     debugPrint('Storix playback error: $e');
