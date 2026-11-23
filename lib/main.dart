@@ -143,6 +143,12 @@ AudioPlayer get _player => _audio.player;
           
           // Мини-плеер
           if (_currentTrack != null)
+  MiniPlayerBar(
+    track: _currentTrack!,
+    player: _player,
+    isLoading: _isLoadingTrack,
+  ),
+if (false)
             Positioned(
               left: 16, right: 16,
               bottom: 90 + MediaQuery.of(context).padding.bottom,
