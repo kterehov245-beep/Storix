@@ -4,6 +4,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:soundcloud_explode_dart/soundcloud_explode_dart.dart';
 import 'package:glass_liquid_navbar/glass_liquid_navbar.dart'; // Импорт навигации
 import 'services/storix_audio_engine.dart';
+import 'library_screen.dart';
 void main() {
   runApp(const MyMusicApp());
 }
