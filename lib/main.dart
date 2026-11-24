@@ -243,9 +243,215 @@ class AppBackground extends StatelessWidget {
 }
 
 // --- НАПОЛНЕННЫЕ РАЗДЕЛЫ ---
+// --- ГЛАВНЫЙ ЭКРАН ---
 class HomeScreen extends StatelessWidget {
   final Function(Track) onPlay;
   const HomeScreen({super.key, required this.onPlay});
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      bottom: false,
+      child: ListView(
+        padding: const EdgeInsets.only(bottom: 180), // Отступ под плеер
+        children: [
+          // Приветствие
+          const Padding(
+            padding: EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.waves_rounded, color: Colors.white, size: 35),
+                    SizedBox(width: 10),
+                    Text('Storix', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white)),
+                  ],
+                ),
+                SizedBox(height: 20),
+                Text('Добрый вечер', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
+                SizedBox(height: 8),
+                Text('SoundCloud и аддоны: импорт и действия', style: TextStyle(fontSize: 14, color: Colors.white54)),
+              ],
+            ),
+          ),
+          
+          // Большой баннер (как RX Wave)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+            child: Container(
+              height: 140,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF4facfe), Color(0xFFb06ab3)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Stack(
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.all(20.0),
+                    child: Text('Storix Wave', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+                  ),
+                  Positioned(
+                    right: 16,
+                    bottom: 16,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
+                      child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 36),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          // Горизонтальные фильтры
+          const SizedBox(height: 24),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                _buildFilterChip('Все площадки', isActive: true),
+                _buildFilterChip('Музыка'),
+                _buildFilterChip('Плейлисты'),
+              ],
+            ),
+          ),
+          
+          // Сетка треков (2 колонки) с использованием GlassSurface
+          const SizedBox(height: 24),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 2.2,
+              ),
+              itemCount: 4,
+              itemBuilder: (context, index) {
+                return GlassSurface(
+                  radius: 12,
+                  blur: 10,
+                  fillAlpha: 40,
+                  padding: EdgeInsets.zero,
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 60,
+                        decoration: const BoxDecoration(
+                          borderRadius: BorderRadius.only(topLeft: Radius.circular(12), bottomLeft: Radius.circular(12)),
+                          color: Colors.grey, // Сюда можно потом поставить картинку
+                        ),
+                        child: const Icon(Icons.music_note, color: Colors.white54),
+                      ),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text('Название\nтрека', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String text, {bool isActive = false}) {
+    return Container(
+      margin: const EdgeInsets.only(right: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: isActive ? Colors.blueAccent : Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(color: isActive ? Colors.white : Colors.white70, fontWeight: isActive ? FontWeight.bold : FontWeight.normal),
+      ),
+    );
+  }
+}
+
+// --- ОБЗОР (Карточки настроений) ---
+class BrowseScreen extends StatelessWidget {
+  const BrowseScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Обзор', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
+            const SizedBox(height: 20),
+            Expanded(
+              child: GridView.builder(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 1.6,
+                ),
+                itemCount: 6,
+                itemBuilder: (context, index) {
+                  // Временные цвета и названия для карточек
+                  final colors = [
+                    [Colors.amber, Colors.orange],
+                    [Colors.purpleAccent, Colors.deepPurple],
+                    [Colors.blueGrey, Colors.grey],
+                    [Colors.lightGreen, Colors.green],
+                    [Colors.redAccent, Colors.red],
+                    [Colors.lightBlue, Colors.blue],
+                  ];
+                  final titles = ['В дороге', 'Вечеринка', 'Грустная', 'Заряд энергии', 'Романтика', 'Сон'];
+                  
+                  return Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      gradient: LinearGradient(
+                        colors: colors[index % colors.length],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    padding: const EdgeInsets.all(12),
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      titles[index % titles.length],
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// --- БИБЛИОТЕКА ---
+class LibraryScreen extends StatelessWidget {
+  final Function(Track) onPlay;
+  const LibraryScreen({super.key, required this.onPlay});
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -255,21 +461,72 @@ class HomeScreen extends StatelessWidget {
         children: [
           const Padding(
             padding: EdgeInsets.all(20.0),
-            child: Row(
-              children: [
-                Icon(Icons.waves_rounded, color: Colors.white, size: 35),
-                SizedBox(width: 10),
-                Text('Storix', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white)),
-              ],
-            ),
+            child: Text('Библиотека', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
           ),
-          // Пример контента
+          
+          // Карточка статистики
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Container(
-              height: 100,
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), gradient: const LinearGradient(colors: [Color(0xFF5CB8E6), Color(0xFF9A81D7)])),
-              child: const Center(child: Text('Добро пожаловать в Storix!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white))),
+            child: GlassSurface(
+              radius: 24,
+              blur: 15,
+              fillAlpha: 30,
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('ВАШ ОПЫТ ПРОСЛУШИВАНИЯ', style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 20),
+                  const Text('19 МИНУТ', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: const [
+                      Text('КИРИЛЛ\n12 прослушиваний', style: TextStyle(color: Colors.white, fontSize: 12)),
+                      Text('11/26', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          const SizedBox(height: 20),
+          
+          // Меню
+          ListTile(
+            leading: const Icon(Icons.download, color: Colors.blueAccent),
+            title: const Text('Загрузки', style: TextStyle(color: Colors.white)),
+            trailing: const Icon(Icons.chevron_right, color: Colors.white54),
+            onTap: () {},
+          ),
+          ListTile(
+            leading: const Icon(Icons.folder, color: Colors.blueAccent),
+            title: const Text('Локальная музыка', style: TextStyle(color: Colors.white)),
+            trailing: const Icon(Icons.chevron_right, color: Colors.white54),
+            onTap: () {},
+          ),
+          
+          const SizedBox(height: 20),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: Text('Плейлисты', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+          ),
+          const SizedBox(height: 10),
+          // Заглушка под плейлисты
+          SizedBox(
+            height: 140,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              children: [
+                Container(
+                  width: 140,
+                  margin: const EdgeInsets.only(right: 12),
+                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(16)),
+                  child: const Center(child: Icon(Icons.add, color: Colors.blueAccent, size: 40)),
+                ),
+              ],
             ),
           ),
         ],
@@ -278,30 +535,69 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-class BrowseScreen extends StatelessWidget {
-  const BrowseScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return const SafeArea(child: Center(child: Text('Обзор (скоро здесь появятся подборки)', style: TextStyle(color: Colors.white54))));
-  }
-}
-
-class LibraryScreen extends StatelessWidget {
-  const LibraryScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return const SafeArea(child: Center(child: Text('Библиотека (ваши плейлисты)', style: TextStyle(color: Colors.white54))));
-  }
-}
-
+// --- ИЗБРАННОЕ ---
 class FavoritesScreen extends StatelessWidget {
   const FavoritesScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return const SafeArea(child: Center(child: Text('Избранное (треки, которые вам понравились)', style: TextStyle(color: Colors.white54))));
+    return SafeArea(
+      bottom: false,
+      child: ListView(
+        padding: const EdgeInsets.only(bottom: 180),
+        children: [
+          // Шапка "Любимое"
+          Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF2b1055), Color(0xFF7597de)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Любимое', style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white)),
+                  const SizedBox(height: 10),
+                  const Text('05 треков', style: TextStyle(fontSize: 18, color: Colors.white70)),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () {},
+                        icon: const Icon(Icons.play_arrow),
+                        label: const Text('Играть'),
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black),
+                      ),
+                      const SizedBox(width: 10),
+                      OutlinedButton(
+                        onPressed: () {},
+                        style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white54)),
+                        child: const Text('Перемешать', style: TextStyle(color: Colors.white)),
+                      ),
+                    ],
+                  )
+                ],
+              ),
+            ),
+          ),
+          // Список треков (заглушка)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(40.0),
+              child: Text('Здесь будут ваши любимые треки', style: TextStyle(color: Colors.white54)),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
-
 // --- ПОИСК С ИСПРАВЛЕННЫМ SOUNDCLOUD ---
 class SearchScreen extends StatefulWidget {
   final Function(Track) onPlay;
