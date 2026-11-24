@@ -5,6 +5,7 @@ import 'dart:ui' show FontFeature, ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 
+import 'glass.dart';
 import 'library_screen.dart'
     show LibraryStore, PlaybackController, TrackArt, hueFor;
 import 'lyrics.dart';
@@ -20,12 +21,12 @@ String _formatTime(Duration d) {
 
 Color _hueTint(double hue) => HSLColor.fromAHSL(1, hue, 0.45, 0.26).toColor();
 
-/// Оттенок для фона: берём его из обложки (если она есть).
+/// Оттенок для подложки: берём его из обложки (если она есть).
 Future<Color?> _imageTint(Track track) async {
   final thumb = track.thumbnail.trim();
   if (thumb.isEmpty) return null;
   try {
-        final ImageProvider<Object> provider;
+    final ImageProvider<Object> provider;
     if (thumb.startsWith('http')) {
       provider = NetworkImage(thumb);
     } else {
@@ -188,66 +189,60 @@ class MiniPlayerBar extends StatelessWidget {
       bottom: 90 + MediaQuery.of(context).padding.bottom,
       child: GestureDetector(
         onTap: () => Navigator.push(context, nowPlayingRoute(track, player)),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(26),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-            child: Container(
-              height: 68,
-              decoration: BoxDecoration(
-                color: Colors.black.withAlpha(90),
-                borderRadius: BorderRadius.circular(26),
-                border: Border.all(color: Colors.white.withAlpha(50)),
-              ),
-              child: Stack(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(10, 0, 6, 0),
-                    child: Row(
-                      children: [
-                        TrackArt(track: track, size: 48, radius: 14),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                track.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                ),
+        child: GlassSurface(
+          radius: 26,
+          blur: 24,
+          fillAlpha: 55,
+          child: SizedBox(
+            height: 68,
+            child: Stack(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 0, 6, 0),
+                  child: Row(
+                    children: [
+                      TrackArt(track: track, size: 48, radius: 14),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              track.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                track.artist,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white60,
-                                  fontSize: 12.5,
-                                ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              track.artist,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12.5,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                        _playButton(),
-                        _nextButton(),
-                      ],
-                    ),
+                      ),
+                      _playButton(),
+                      _nextButton(),
+                    ],
                   ),
-                  Positioned(
-                    left: 16,
-                    right: 16,
-                    bottom: 0,
-                    child: _progressLine(),
-                  ),
-                ],
-              ),
+                ),
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: 0,
+                  child: _progressLine(),
+                ),
+              ],
             ),
           ),
         ),
@@ -352,25 +347,58 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     );
   }
 
-  Widget _glassButton({
-    required IconData icon,
-    required VoidCallback? onPressed,
-    Color color = Colors.white,
-  }) {
-    return Container(
-      width: 46,
-      height: 46,
+  /// Размытая копия обложки на весь экран — под ней стекло красиво «живёт».
+  Widget _buildBackdrop(Track track, Color tint) {
+    final thumb = track.thumbnail.trim();
+    final hue = hueFor(track.title);
+    final fallback = Container(
       decoration: BoxDecoration(
-        color: Colors.white.withAlpha(40),
-        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            HSLColor.fromAHSL(1, hue, 0.65, 0.55).toColor(),
+            HSLColor.fromAHSL(1, (hue + 40) % 360, 0.70, 0.28).toColor(),
+          ],
+        ),
       ),
-      child: IconButton(
-        padding: EdgeInsets.zero,
-        iconSize: 24,
-        color: color,
-        icon: Icon(icon),
-        onPressed: onPressed,
-      ),
+    );
+    final Widget base;
+    if (thumb.isEmpty) {
+      base = fallback;
+    } else if (thumb.startsWith('http')) {
+      base = Image.network(
+        thumb,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => fallback,
+      );
+    } else {
+      base = Image.file(
+        File(thumb),
+        fit: BoxFit.cover,
+        cacheWidth: 200,
+        errorBuilder: (_, __, ___) => fallback,
+      );
+    }
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Container(color: tint),
+        ImageFiltered(
+          imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
+          child: base,
+        ),
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0x26000000), Color(0x73000000), _black],
+              stops: [0.0, 0.55, 1.0],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -382,9 +410,12 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             .any((t) => t.streamUrl == track.streamUrl);
         if (!inLibrary) return const SizedBox.shrink();
         final fav = LibraryStore.instance.isFavorite(track);
-        return _glassButton(
+        return GlassButton(
+          size: 48,
+          iconSize: 25,
           icon: fav ? Icons.star_rounded : Icons.star_border_rounded,
           color: fav ? const Color(0xFFFFD54F) : Colors.white,
+          fillAlpha: fav ? 100 : 70,
           onPressed: () => LibraryStore.instance.toggleFavorite(track),
         );
       },
@@ -392,39 +423,48 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
   }
 
   Widget _buildLyricLine() {
-    if (_lyrics.isEmpty) return const SizedBox(height: 44);
+    if (_lyrics.isEmpty) return const SizedBox(height: 48);
     return StreamBuilder<Duration>(
       stream: widget.player.positionStream,
       builder: (context, snapshot) {
         final i = _lyricIndex(_lyrics, snapshot.data ?? Duration.zero);
         final text = i >= 0 ? _lyrics[i].text : '♪';
-        return InkWell(
+        return GestureDetector(
           onTap: _openLyrics,
-          child: SizedBox(
-            height: 44,
-            child: Row(
-              children: [
-                Expanded(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 250),
-                    child: Align(
-                      key: ValueKey(text),
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        text,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
+          child: GlassSurface(
+            radius: 24,
+            blur: 18,
+            fillAlpha: 50,
+            padding: const EdgeInsets.only(left: 18, right: 8),
+            child: SizedBox(
+              height: 48,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 250),
+                      child: Align(
+                        key: ValueKey(text),
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          text,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                const Icon(Icons.chevron_right_rounded, color: Colors.white60),
-              ],
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Colors.white70,
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -492,30 +532,26 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             processing == ProcessingState.buffering;
         final completed = processing == ProcessingState.completed;
 
-        if (busy) {
-          return const SizedBox(
-            width: 88,
-            height: 88,
-            child: Padding(
-              padding: EdgeInsets.all(26),
-              child: CircularProgressIndicator(
-                strokeWidth: 3.5,
-                color: Colors.white,
-              ),
-            ),
-          );
-        }
-
         IconData icon =
             playing ? Icons.pause_rounded : Icons.play_arrow_rounded;
         if (completed) icon = Icons.replay_rounded;
 
-        return IconButton(
-          padding: EdgeInsets.zero,
-          iconSize: 88,
-          color: Colors.white,
-          icon: Icon(icon),
+        return GlassButton(
+          size: 100,
+          iconSize: 60,
+          fillAlpha: 110,
+          icon: icon,
+          child: busy
+              ? const Padding(
+                  padding: EdgeInsets.all(32),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 3.5,
+                    color: Colors.white,
+                  ),
+                )
+              : null,
           onPressed: () {
+            if (busy) return;
             if (completed) {
               widget.player.seek(Duration.zero);
               widget.player.play();
@@ -535,10 +571,12 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
       stream: widget.player.loopModeStream,
       builder: (context, snapshot) {
         final one = (snapshot.data ?? LoopMode.off) == LoopMode.one;
-        return IconButton(
-          iconSize: 30,
-          color: one ? Colors.white : Colors.white60,
-          icon: Icon(one ? Icons.repeat_one_rounded : Icons.repeat_rounded),
+        return GlassButton(
+          size: 54,
+          iconSize: 26,
+          fillAlpha: one ? 130 : 70,
+          color: one ? Colors.white : Colors.white70,
+          icon: one ? Icons.repeat_one_rounded : Icons.repeat_rounded,
           onPressed: () =>
               widget.player.setLoopMode(one ? LoopMode.off : LoopMode.one),
         );
@@ -558,7 +596,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         final from = track.streamUrl.startsWith('http')
             ? 'Играет из SoundCloud'
             : 'Играет из библиотеки';
-        const shadows = [Shadow(blurRadius: 8, color: Colors.black54)];
 
         return Scaffold(
           backgroundColor: _black,
@@ -569,25 +606,17 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             },
             child: Stack(
               children: [
-                // Фон: цвет берётся из обложки и уходит в чёрный.
+                // Размытая обложка на весь экран.
                 Positioned.fill(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 600),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Color.lerp(tint, Colors.white, 0.08)!,
-                          tint,
-                          _black,
-                        ],
-                        stops: const [0.0, 0.45, 1.0],
-                      ),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 500),
+                    child: KeyedSubtree(
+                      key: ValueKey(track.streamUrl),
+                      child: _buildBackdrop(track, tint),
                     ),
                   ),
                 ),
-                // Обложка во всю ширину, низ плавно растворяется.
+                // Чёткая обложка во всю ширину, низ плавно растворяется.
                 Positioned(
                   top: 0,
                   left: 0,
@@ -641,15 +670,23 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 10),
                         Center(
-                          child: Text(
-                            from,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              shadows: shadows,
+                          child: GlassSurface(
+                            radius: 18,
+                            blur: 16,
+                            fillAlpha: 55,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 6,
+                            ),
+                            child: Text(
+                              from,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ),
@@ -691,46 +728,46 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                         ),
                         const SizedBox(height: 14),
                         _buildLyricLine(),
+                        const SizedBox(height: 10),
                         _buildProgress(track),
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 14),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            IconButton(
-                              iconSize: 64,
-                              color: Colors.white,
-                              icon: const Icon(Icons.fast_rewind_rounded),
+                            GlassButton(
+                              size: 72,
+                              iconSize: 40,
+                              icon: Icons.fast_rewind_rounded,
                               onPressed: () => controller.previous(),
                             ),
                             _buildPlayButton(),
-                            IconButton(
-                              iconSize: 64,
-                              color: Colors.white,
-                              disabledColor: Colors.white24,
-                              icon: const Icon(Icons.fast_forward_rounded),
+                            GlassButton(
+                              size: 72,
+                              iconSize: 40,
+                              icon: Icons.fast_forward_rounded,
                               onPressed: controller.hasNext
                                   ? () => controller.next()
                                   : null,
                             ),
                           ],
                         ),
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 16),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            IconButton(
-                              iconSize: 30,
-                              color: _lyrics.isEmpty
-                                  ? Colors.white30
-                                  : Colors.white,
-                              icon: const Icon(Icons.lyrics_outlined),
+                            GlassButton(
+                              size: 54,
+                              iconSize: 26,
+                              icon: Icons.lyrics_outlined,
+                              color:
+                                  _lyrics.isEmpty ? Colors.white38 : Colors.white,
                               onPressed: _openLyrics,
                             ),
                             _buildRepeat(),
-                            IconButton(
-                              iconSize: 30,
-                              color: Colors.white,
-                              icon: const Icon(Icons.queue_music_rounded),
+                            GlassButton(
+                              size: 54,
+                              iconSize: 26,
+                              icon: Icons.queue_music_rounded,
                               onPressed: _openQueue,
                             ),
                           ],
@@ -871,13 +908,9 @@ class _LyricsSheetState extends State<_LyricsSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final bg = Color.lerp(widget.tint, _black, 0.45)!;
-    return Container(
+    return GlassSheet(
       height: MediaQuery.of(context).size.height * 0.88,
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
+      tint: Color.lerp(widget.tint, _black, 0.5)!,
       child: Column(
         children: [
           const SizedBox(height: 10),
@@ -903,7 +936,7 @@ class _LyricsSheetState extends State<_LyricsSheet> {
                     widget.track.artist,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white60, fontSize: 14),
+                    style: const TextStyle(color: Colors.white70, fontSize: 14),
                   ),
                 ],
               ),
@@ -954,12 +987,9 @@ class _QueueSheet extends StatelessWidget {
       builder: (context, _) {
         final controller = PlaybackController.instance;
         final queue = controller.queue;
-        return Container(
+        return GlassSheet(
           height: MediaQuery.of(context).size.height * 0.7,
-          decoration: const BoxDecoration(
-            color: Color(0xFF15151C),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
+          tint: const Color(0xFF15151C),
           child: Column(
             children: [
               const SizedBox(height: 10),
@@ -1000,11 +1030,13 @@ class _QueueSheet extends StatelessWidget {
                         t.artist,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Colors.white54),
+                        style: const TextStyle(color: Colors.white60),
                       ),
                       trailing: isCurrent
-                          ? const Icon(Icons.graphic_eq_rounded,
-                              color: Colors.white)
+                          ? const Icon(
+                              Icons.graphic_eq_rounded,
+                              color: Colors.white,
+                            )
                           : null,
                       onTap: () => controller.playAt(i),
                     );
