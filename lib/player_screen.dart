@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:ui' show FontFeature, ImageFilter;
+import 'dart:ui' show FontFeature;
 
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
@@ -12,16 +12,23 @@ import 'lyrics.dart';
 import 'main.dart' show Track;
 
 const Color _black = Color(0xFF060607);
+const Color _gold = Color(0xFFFFD54F);
 final Map<String, Color> _tintCache = {};
+
+/// Сдвиг текста песни в миллисекундах: плюс — строки появляются позже.
+int _lyricsOffsetMs = 0;
 
 String _formatTime(Duration d) {
   final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
   return '${d.inMinutes}:$s';
 }
 
+String _clock(DateTime d) =>
+    '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
 Color _hueTint(double hue) => HSLColor.fromAHSL(1, hue, 0.45, 0.26).toColor();
 
-/// Оттенок для подложки: берём его из обложки (если она есть).
+/// Оттенок для фона: берём его из обложки (если она есть).
 Future<Color?> _imageTint(Track track) async {
   final thumb = track.thumbnail.trim();
   if (thumb.isEmpty) return null;
@@ -50,7 +57,9 @@ Future<Color?> _imageTint(Track track) async {
 
 /// Номер строки текста, которая поётся сейчас.
 int _lyricIndex(List<LyricLine> lines, Duration position) {
-  final p = position + const Duration(milliseconds: 250);
+  final p = position -
+      Duration(milliseconds: _lyricsOffsetMs) +
+      const Duration(milliseconds: 250);
   var index = -1;
   for (var i = 0; i < lines.length; i++) {
     if (lines[i].time <= p) {
@@ -70,6 +79,44 @@ Widget _sheetHandle() => Container(
         borderRadius: BorderRadius.circular(2),
       ),
     );
+
+Widget _infoRow(String key, String value) => Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(key, style: const TextStyle(color: Colors.white54, fontSize: 12.5)),
+          Text(value, style: const TextStyle(color: Colors.white, fontSize: 16)),
+        ],
+      ),
+    );
+
+/// Таймер сна: останавливает музыку через заданное время.
+class SleepTimer extends ChangeNotifier {
+  SleepTimer._();
+  static final SleepTimer instance = SleepTimer._();
+
+  Timer? _timer;
+  DateTime? endsAt;
+
+  void start(Duration duration, AudioPlayer player) {
+    _timer?.cancel();
+    endsAt = DateTime.now().add(duration);
+    _timer = Timer(duration, () {
+      player.pause();
+      endsAt = null;
+      notifyListeners();
+    });
+    notifyListeners();
+  }
+
+  void cancel() {
+    _timer?.cancel();
+    _timer = null;
+    endsAt = null;
+    notifyListeners();
+  }
+}
 
 /// Экран плеера выезжает снизу.
 Route<void> nowPlayingRoute(Track track, AudioPlayer player) {
@@ -291,6 +338,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     if (_loadedKey == track.streamUrl) return;
     _loadedKey = track.streamUrl;
     _lyrics = const [];
+    _lyricsOffsetMs = 0;
     _tint = _tintCache[track.streamUrl];
     unawaited(_loadTint(track));
     unawaited(_loadLyrics(track));
@@ -316,6 +364,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
       setState(() => _lyrics = lines);
     }
   }
+
+  // --- Действия из меню и кнопок ---
 
   void _openLyrics() {
     if (_lyrics.isEmpty) {
@@ -347,60 +397,265 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     );
   }
 
-  /// Размытая копия обложки на весь экран — под ней стекло красиво «живёт».
-  Widget _buildBackdrop(Track track, Color tint) {
-    final thumb = track.thumbnail.trim();
-    final hue = hueFor(track.title);
-    final fallback = Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            HSLColor.fromAHSL(1, hue, 0.65, 0.55).toColor(),
-            HSLColor.fromAHSL(1, (hue + 40) % 360, 0.70, 0.28).toColor(),
-          ],
-        ),
+  void _shuffleLibrary() {
+    final all = List<Track>.of(LibraryStore.instance.tracks)..shuffle();
+    if (all.isEmpty) return;
+    PlaybackController.instance.setQueue(all);
+    PlaybackController.instance.playAt(0);
+  }
+
+  void _openSleepTimer() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        backgroundColor: const Color(0xFF1B1B22),
+        title: const Text('Таймер сна'),
+        children: [
+          for (final minutes in const [15, 30, 45, 60])
+            SimpleDialogOption(
+              onPressed: () {
+                SleepTimer.instance
+                    .start(Duration(minutes: minutes), widget.player);
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Музыка выключится через $minutes мин'),
+                  ),
+                );
+              },
+              child: Text('$minutes минут'),
+            ),
+          if (SleepTimer.instance.endsAt != null)
+            SimpleDialogOption(
+              onPressed: () {
+                SleepTimer.instance.cancel();
+                Navigator.pop(ctx);
+              },
+              child: const Text('Выключить таймер'),
+            ),
+        ],
       ),
     );
-    final Widget base;
-    if (thumb.isEmpty) {
-      base = fallback;
-    } else if (thumb.startsWith('http')) {
-      base = Image.network(
-        thumb,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => fallback,
-      );
-    } else {
-      base = Image.file(
-        File(thumb),
-        fit: BoxFit.cover,
-        cacheWidth: 200,
-        errorBuilder: (_, __, ___) => fallback,
-      );
-    }
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Container(color: tint),
-        ImageFiltered(
-          imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
-          child: base,
-        ),
-        const DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0x26000000), Color(0x73000000), _black],
-              stops: [0.0, 0.55, 1.0],
+  }
+
+  void _openLyricsOffset() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) {
+          final seconds = _lyricsOffsetMs / 1000;
+          final label =
+              '${seconds > 0 ? '+' : ''}${seconds.toStringAsFixed(1)} с';
+          return AlertDialog(
+            backgroundColor: const Color(0xFF1B1B22),
+            title: const Text('Сдвиг текста'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.remove_circle_outline_rounded),
+                      onPressed: () => setLocal(() => _lyricsOffsetMs -= 500),
+                    ),
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add_circle_outline_rounded),
+                      onPressed: () => setLocal(() => _lyricsOffsetMs += 500),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Минус: строки появляются раньше.\nПлюс: позже.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white54, fontSize: 13),
+                ),
+              ],
             ),
-          ),
-        ),
-      ],
+            actions: [
+              TextButton(
+                onPressed: () => setLocal(() => _lyricsOffsetMs = 0),
+                child: const Text('Сбросить'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Готово'),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
+
+  void _openInfo() {
+    final track = _track;
+    final duration = widget.player.duration ?? track.duration;
+    final isLocal = !track.streamUrl.startsWith('http');
+    var size = '';
+    if (isLocal) {
+      try {
+        final mb = File(track.streamUrl).lengthSync() / 1048576;
+        size = '${mb.toStringAsFixed(1)} МБ';
+      } catch (_) {}
+    }
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1B1B22),
+        title: const Text('Информация о песне'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _infoRow('Название', track.title),
+            _infoRow('Исполнитель', track.artist),
+            _infoRow('Длительность', _formatTime(duration)),
+            _infoRow('Источник', isLocal ? 'Библиотека' : 'SoundCloud'),
+            if (size.isNotEmpty) _infoRow('Размер файла', size),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Закрыть'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- Меню «⋯» ---
+
+  void _openMenu() {
+    final track = _track;
+    showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Закрыть меню',
+      barrierColor: Colors.black26,
+      transitionDuration: const Duration(milliseconds: 220),
+      pageBuilder: (ctx, _, __) {
+        final height = MediaQuery.of(ctx).size.height;
+        return SafeArea(
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 20, top: 16, bottom: 16),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: 270,
+                  maxHeight: height * 0.82,
+                ),
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: GlassSurface(
+                    radius: 34,
+                    blur: 30,
+                    fillAlpha: 30,
+                    child: Container(
+                      color: Colors.black.withAlpha(125),
+                      child: _buildMenu(ctx, track),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (ctx, animation, _, child) {
+        final curved =
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+        return FadeTransition(
+          opacity: curved,
+          child: ScaleTransition(
+            alignment: const Alignment(0.9, 0.2),
+            scale: Tween<double>(begin: 0.85, end: 1.0).animate(curved),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMenu(BuildContext ctx, Track track) {
+    final inLibrary = LibraryStore.instance.tracks
+        .any((t) => t.streamUrl == track.streamUrl);
+    final isFav = LibraryStore.instance.isFavorite(track);
+    final timerEnd = SleepTimer.instance.endsAt;
+
+    void run(VoidCallback action) {
+      Navigator.pop(ctx);
+      action();
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(8, 18, 8, 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _MenuTopAction(
+                icon: isFav ? Icons.star_rounded : Icons.star_border_rounded,
+                label: 'Нравится',
+                color: isFav ? _gold : Colors.white,
+                onTap: inLibrary
+                    ? () => run(() => LibraryStore.instance.toggleFavorite(track))
+                    : null,
+              ),
+              _MenuTopAction(
+                icon: Icons.queue_music_rounded,
+                label: 'Очередь',
+                onTap: () => run(_openQueue),
+              ),
+              _MenuTopAction(
+                icon: Icons.lyrics_outlined,
+                label: 'Текст',
+                onTap: () => run(_openLyrics),
+              ),
+            ],
+          ),
+          const _MenuDivider(),
+          _MenuItem(
+            icon: Icons.shuffle_rounded,
+            title: 'Перемешать библиотеку',
+            onTap: () => run(_shuffleLibrary),
+          ),
+          const _MenuDivider(),
+          _MenuItem(
+            icon: Icons.bedtime_outlined,
+            title: 'Таймер сна',
+            subtitle: timerEnd == null ? null : 'до ${_clock(timerEnd)}',
+            onTap: () => run(_openSleepTimer),
+          ),
+          _MenuItem(
+            icon: Icons.tune_rounded,
+            title: 'Сдвиг текста',
+            onTap: () => run(_openLyricsOffset),
+          ),
+          const _MenuDivider(),
+          _MenuItem(
+            icon: Icons.info_outline_rounded,
+            title: 'Информация о песне',
+            onTap: () => run(_openInfo),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- Части экрана ---
 
   Widget _buildStar(Track track) {
     return ListenableBuilder(
@@ -410,61 +665,55 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             .any((t) => t.streamUrl == track.streamUrl);
         if (!inLibrary) return const SizedBox.shrink();
         final fav = LibraryStore.instance.isFavorite(track);
-        return GlassButton(
-          size: 48,
-          iconSize: 25,
-          icon: fav ? Icons.star_rounded : Icons.star_border_rounded,
-          color: fav ? const Color(0xFFFFD54F) : Colors.white,
-          fillAlpha: fav ? 100 : 70,
-          onPressed: () => LibraryStore.instance.toggleFavorite(track),
+        return Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: GlassButton(
+            size: 38,
+            iconSize: 20,
+            icon: fav ? Icons.star_rounded : Icons.star_border_rounded,
+            color: fav ? _gold : Colors.white,
+            fillAlpha: 60,
+            onPressed: () => LibraryStore.instance.toggleFavorite(track),
+          ),
         );
       },
     );
   }
 
   Widget _buildLyricLine() {
-    if (_lyrics.isEmpty) return const SizedBox(height: 48);
+    if (_lyrics.isEmpty) return const SizedBox(height: 44);
     return StreamBuilder<Duration>(
       stream: widget.player.positionStream,
       builder: (context, snapshot) {
         final i = _lyricIndex(_lyrics, snapshot.data ?? Duration.zero);
         final text = i >= 0 ? _lyrics[i].text : '♪';
-        return GestureDetector(
+        return InkWell(
           onTap: _openLyrics,
-          child: GlassSurface(
-            radius: 24,
-            blur: 18,
-            fillAlpha: 50,
-            padding: const EdgeInsets.only(left: 18, right: 8),
-            child: SizedBox(
-              height: 48,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 250),
-                      child: Align(
-                        key: ValueKey(text),
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          text,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                          ),
+          child: SizedBox(
+            height: 44,
+            child: Row(
+              children: [
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 250),
+                    child: Align(
+                      key: ValueKey(text),
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        text,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
                   ),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: Colors.white70,
-                  ),
-                ],
-              ),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: Colors.white60),
+              ],
             ),
           ),
         );
@@ -532,26 +781,30 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             processing == ProcessingState.buffering;
         final completed = processing == ProcessingState.completed;
 
+        if (busy) {
+          return const SizedBox(
+            width: 76,
+            height: 76,
+            child: Padding(
+              padding: EdgeInsets.all(22),
+              child: CircularProgressIndicator(
+                strokeWidth: 3.5,
+                color: Colors.white,
+              ),
+            ),
+          );
+        }
+
         IconData icon =
             playing ? Icons.pause_rounded : Icons.play_arrow_rounded;
         if (completed) icon = Icons.replay_rounded;
 
-        return GlassButton(
-          size: 100,
-          iconSize: 60,
-          fillAlpha: 110,
-          icon: icon,
-          child: busy
-              ? const Padding(
-                  padding: EdgeInsets.all(32),
-                  child: CircularProgressIndicator(
-                    strokeWidth: 3.5,
-                    color: Colors.white,
-                  ),
-                )
-              : null,
+        return IconButton(
+          padding: EdgeInsets.zero,
+          iconSize: 76,
+          color: Colors.white,
+          icon: Icon(icon),
           onPressed: () {
-            if (busy) return;
             if (completed) {
               widget.player.seek(Duration.zero);
               widget.player.play();
@@ -571,12 +824,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
       stream: widget.player.loopModeStream,
       builder: (context, snapshot) {
         final one = (snapshot.data ?? LoopMode.off) == LoopMode.one;
-        return GlassButton(
-          size: 54,
-          iconSize: 26,
-          fillAlpha: one ? 130 : 70,
-          color: one ? Colors.white : Colors.white70,
-          icon: one ? Icons.repeat_one_rounded : Icons.repeat_rounded,
+        return IconButton(
+          iconSize: 28,
+          color: one ? Colors.white : Colors.white60,
+          icon: Icon(one ? Icons.repeat_one_rounded : Icons.repeat_rounded),
           onPressed: () =>
               widget.player.setLoopMode(one ? LoopMode.off : LoopMode.one),
         );
@@ -596,6 +847,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         final from = track.streamUrl.startsWith('http')
             ? 'Играет из SoundCloud'
             : 'Играет из библиотеки';
+        const shadows = [Shadow(blurRadius: 8, color: Colors.black87)];
 
         return Scaffold(
           backgroundColor: _black,
@@ -606,17 +858,25 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             },
             child: Stack(
               children: [
-                // Размытая обложка на весь экран.
+                // Фон: цвет берётся из обложки и уходит в чёрный.
                 Positioned.fill(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 500),
-                    child: KeyedSubtree(
-                      key: ValueKey(track.streamUrl),
-                      child: _buildBackdrop(track, tint),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 600),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Color.lerp(tint, Colors.white, 0.08)!,
+                          tint,
+                          _black,
+                        ],
+                        stops: const [0.0, 0.45, 1.0],
+                      ),
                     ),
                   ),
                 ),
-                // Чёткая обложка во всю ширину, низ плавно растворяется.
+                // Обложка во всю ширину, низ плавно растворяется.
                 Positioned(
                   top: 0,
                   left: 0,
@@ -670,23 +930,15 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 12),
                         Center(
-                          child: GlassSurface(
-                            radius: 18,
-                            blur: 16,
-                            fillAlpha: 55,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 6,
-                            ),
-                            child: Text(
-                              from,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
+                          child: Text(
+                            from,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              shadows: shadows,
                             ),
                           ),
                         ),
@@ -724,55 +976,62 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                             ),
                             const SizedBox(width: 12),
                             _buildStar(track),
+                            GlassButton(
+                              size: 38,
+                              iconSize: 20,
+                              icon: Icons.more_horiz_rounded,
+                              fillAlpha: 60,
+                              onPressed: _openMenu,
+                            ),
                           ],
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 12),
                         _buildLyricLine(),
-                        const SizedBox(height: 10),
                         _buildProgress(track),
                         const SizedBox(height: 14),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            GlassButton(
-                              size: 72,
-                              iconSize: 40,
-                              icon: Icons.fast_rewind_rounded,
+                            IconButton(
+                              iconSize: 58,
+                              color: Colors.white,
+                              icon: const Icon(Icons.fast_rewind_rounded),
                               onPressed: () => controller.previous(),
                             ),
                             _buildPlayButton(),
-                            GlassButton(
-                              size: 72,
-                              iconSize: 40,
-                              icon: Icons.fast_forward_rounded,
+                            IconButton(
+                              iconSize: 58,
+                              color: Colors.white,
+                              disabledColor: Colors.white24,
+                              icon: const Icon(Icons.fast_forward_rounded),
                               onPressed: controller.hasNext
                                   ? () => controller.next()
                                   : null,
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 26),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            GlassButton(
-                              size: 54,
-                              iconSize: 26,
-                              icon: Icons.lyrics_outlined,
-                              color:
-                                  _lyrics.isEmpty ? Colors.white38 : Colors.white,
+                            IconButton(
+                              iconSize: 28,
+                              color: _lyrics.isEmpty
+                                  ? Colors.white38
+                                  : Colors.white,
+                              icon: const Icon(Icons.lyrics_outlined),
                               onPressed: _openLyrics,
                             ),
                             _buildRepeat(),
-                            GlassButton(
-                              size: 54,
-                              iconSize: 26,
-                              icon: Icons.queue_music_rounded,
+                            IconButton(
+                              iconSize: 28,
+                              color: Colors.white,
+                              icon: const Icon(Icons.queue_music_rounded),
                               onPressed: _openQueue,
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 14),
                       ],
                     ),
                   ),
@@ -782,6 +1041,108 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
           ),
         );
       },
+    );
+  }
+}
+
+// --- ЭЛЕМЕНТЫ МЕНЮ ---
+class _MenuTopAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback? onTap;
+  const _MenuTopAction({
+    required this.icon,
+    required this.label,
+    this.color = Colors.white,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 28, color: enabled ? color : Colors.white30),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12.5,
+                color: enabled ? Colors.white : Colors.white38,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MenuItem extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final VoidCallback onTap;
+  const _MenuItem({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, size: 24, color: Colors.white),
+            const SizedBox(width: 18),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  if (subtitle != null)
+                    Text(
+                      subtitle!,
+                      style: const TextStyle(color: Colors.white54, fontSize: 13),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MenuDivider extends StatelessWidget {
+  const _MenuDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Divider(height: 1, color: Colors.white12),
     );
   }
 }
