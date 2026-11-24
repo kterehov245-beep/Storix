@@ -25,8 +25,12 @@ Future<Color?> _imageTint(Track track) async {
   final thumb = track.thumbnail.trim();
   if (thumb.isEmpty) return null;
   try {
-    final ImageProvider provider =
-        thumb.startsWith('http') ? NetworkImage(thumb) : FileImage(File(thumb));
+        final ImageProvider<Object> provider;
+    if (thumb.startsWith('http')) {
+      provider = NetworkImage(thumb);
+    } else {
+      provider = FileImage(File(thumb));
+    }
     final scheme = await ColorScheme.fromImageProvider(
       provider: provider,
       brightness: Brightness.dark,
