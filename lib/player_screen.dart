@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:ui' show FontFeature;
+import 'dart:ui' show FontFeature, ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
@@ -139,6 +139,137 @@ Route<void> nowPlayingRoute(Track track, AudioPlayer player) {
       );
     },
   );
+}
+
+// --- ФОН ПЛЕЕРА: обложка, которая плавно размывается книзу ---
+class _PlayerBackground extends StatelessWidget {
+  final Track track;
+  final Color tint;
+  const _PlayerBackground({required this.track, required this.tint});
+
+  Widget _generated() {
+    final hue = hueFor(track.title);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            HSLColor.fromAHSL(1, hue, 0.65, 0.55).toColor(),
+            HSLColor.fromAHSL(1, (hue + 40) % 360, 0.70, 0.28).toColor(),
+          ],
+        ),
+      ),
+      child: Align(
+        alignment: const Alignment(0, -0.5),
+        child: Icon(
+          Icons.music_note_rounded,
+          size: 200,
+          color: Colors.white.withAlpha(70),
+        ),
+      ),
+    );
+  }
+
+  Widget _art(int cacheWidth) {
+    final thumb = track.thumbnail.trim();
+    if (thumb.isEmpty) return _generated();
+    if (thumb.startsWith('http')) {
+      return Image.network(
+        thumb,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        cacheWidth: cacheWidth,
+        errorBuilder: (_, __, ___) => _generated(),
+      );
+    }
+    return Image.file(
+      File(thumb),
+      fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
+      cacheWidth: cacheWidth,
+      errorBuilder: (_, __, ___) => _generated(),
+    );
+  }
+
+  /// Размытая копия обложки, которая «проявляется» между долями from и to.
+  Widget _blurLayer(double sigma, double from, double to) {
+    return ShaderMask(
+      shaderCallback: (rect) => LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: const [Colors.transparent, Colors.white],
+        stops: [from, to],
+      ).createShader(rect),
+      blendMode: BlendMode.dstIn,
+      child: ImageFiltered(
+        imageFilter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+        child: _art(360),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    return RepaintBoundary(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Container(color: tint),
+          // Сильно размытая обложка на весь экран.
+          ImageFiltered(
+            imageFilter: ImageFilter.blur(sigmaX: 45, sigmaY: 45),
+            child: _art(160),
+          ),
+          // Чёткая обложка сверху, которая книзу размывается ступенями.
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: width,
+            child: ShaderMask(
+              shaderCallback: (rect) => const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.white, Colors.white, Colors.transparent],
+                stops: [0.0, 0.72, 1.0],
+              ).createShader(rect),
+              blendMode: BlendMode.dstIn,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _art(1080),
+                  _blurLayer(5, 0.28, 0.55),
+                  _blurLayer(14, 0.45, 0.80),
+                  _blurLayer(30, 0.65, 1.0),
+                ],
+              ),
+            ),
+          ),
+          // Затемнение: чуть сверху (для времени и батареи) и сильно снизу.
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0x59000000),
+                  Color(0x00000000),
+                  Color(0x00000000),
+                  Color(0x73000000),
+                  Color(0xD0000000),
+                ],
+                stops: [0.0, 0.12, 0.30, 0.58, 1.0],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // --- МИНИ-ПЛЕЕР ---
@@ -842,7 +973,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
       builder: (context, _) {
         final track = _track;
         final controller = PlaybackController.instance;
-        final width = MediaQuery.of(context).size.width;
         final tint = _tint ?? _hueTint(hueFor(track.title));
         final from = track.streamUrl.startsWith('http')
             ? 'Играет из SoundCloud'
@@ -858,58 +988,13 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             },
             child: Stack(
               children: [
-                // Фон: цвет берётся из обложки и уходит в чёрный.
+                // Фон: обложка, которая плавно размывается книзу.
                 Positioned.fill(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 600),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Color.lerp(tint, Colors.white, 0.08)!,
-                          tint,
-                          _black,
-                        ],
-                        stops: const [0.0, 0.45, 1.0],
-                      ),
-                    ),
-                  ),
-                ),
-                // Обложка во всю ширину, низ плавно растворяется.
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: width,
-                  child: ShaderMask(
-                    shaderCallback: (rect) => const LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Colors.white, Colors.white, Colors.transparent],
-                      stops: [0.0, 0.62, 1.0],
-                    ).createShader(rect),
-                    blendMode: BlendMode.dstIn,
-                    child: TrackArt(
-                      track: track,
-                      size: width,
-                      radius: 0,
-                      big: true,
-                    ),
-                  ),
-                ),
-                const Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: 120,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Color(0x66000000), Color(0x00000000)],
-                      ),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 500),
+                    child: KeyedSubtree(
+                      key: ValueKey(track.streamUrl),
+                      child: _PlayerBackground(track: track, tint: tint),
                     ),
                   ),
                 ),
