@@ -2,12 +2,16 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:audio_metadata_reader/audio_metadata_reader.dart'
+    show readMetadata;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'main.dart' show Track;
+
+const String _unknownArtist = 'Неизвестный исполнитель';
 
 /// "Исполнитель - Название_12345678.mp3" -> ["Исполнитель", "Название"]
 List<String> _splitName(String fileName) {
@@ -22,7 +26,115 @@ List<String> _splitName(String fileName) {
   if (sep > 0 && sep + 3 < name.length) {
     return [name.substring(0, sep).trim(), name.substring(sep + 3).trim()];
   }
-  return ['Неизвестный исполнитель', name.isEmpty ? fileName : name];
+  return [_unknownArtist, name.isEmpty ? fileName : name];
+}
+
+// --- ЦВЕТ И ОБЛОЖКА ТРЕКА ---
+
+/// Оттенок зависит от названия: один и тот же трек всегда одного цвета.
+double hueFor(String title) {
+  var hash = 0;
+  for (final unit in title.codeUnits) {
+    hash = (hash * 31 + unit) & 0x7fffffff;
+  }
+  return (hash % 360).toDouble();
+}
+
+/// Обложка: картинка из файла или из интернета, а если её нет — нарисованная.
+class TrackArt extends StatelessWidget {
+  final Track track;
+  final double size;
+  final double radius;
+  final bool big;
+  const TrackArt({
+    super.key,
+    required this.track,
+    required this.size,
+    this.radius = 12,
+    this.big = false,
+  });
+
+  Widget _generated() {
+    final hue = hueFor(track.title);
+    Widget blob(double d, int alpha) => Container(
+          width: d,
+          height: d,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white.withAlpha(alpha),
+          ),
+        );
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            HSLColor.fromAHSL(1, hue, 0.65, 0.55).toColor(),
+            HSLColor.fromAHSL(1, (hue + 40) % 360, 0.70, 0.28).toColor(),
+          ],
+        ),
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (big)
+            Positioned(
+              top: -size * 0.15,
+              right: -size * 0.1,
+              child: blob(size * 0.5, 30),
+            ),
+          if (big)
+            Positioned(
+              bottom: size * 0.1,
+              left: -size * 0.15,
+              child: blob(size * 0.6, 20),
+            ),
+          Center(
+            child: Icon(
+              Icons.music_note_rounded,
+              size: size * (big ? 0.35 : 0.5),
+              color: Colors.white.withAlpha(big ? 90 : 210),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final thumb = track.thumbnail.trim();
+    final Widget child;
+    if (thumb.isEmpty) {
+      child = _generated();
+    } else if (thumb.startsWith('http')) {
+      child = Image.network(
+        thumb,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _generated(),
+      );
+    } else {
+      child = Image.file(
+        File(thumb),
+        fit: BoxFit.cover,
+        cacheWidth: big ? 1080 : 240,
+        errorBuilder: (_, __, ___) => _generated(),
+      );
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: SizedBox(width: size, height: size, child: child),
+    );
+  }
+}
+
+class _Tags {
+  final String? title;
+  final String? artist;
+  final String thumbnail;
+  final int durationMs;
+  const _Tags(this.title, this.artist, this.thumbnail, this.durationMs);
 }
 
 /// Хранилище: библиотека, избранное и история.
@@ -58,6 +170,16 @@ class LibraryStore extends ChangeNotifier {
 
   bool isFavorite(Track track) => _favorites.contains(track.streamUrl);
 
+  Track _make(String title, String artist, String path, String thumb, int ms) {
+    return Track(
+      title: title,
+      artist: artist,
+      thumbnail: thumb,
+      streamUrl: path,
+      duration: Duration(milliseconds: ms),
+    );
+  }
+
   Future<Directory> _storageDir() async {
     final existing = _root;
     if (existing != null) return existing;
@@ -66,6 +188,33 @@ class LibraryStore extends ChangeNotifier {
     if (!await dir.exists()) await dir.create(recursive: true);
     _root = dir;
     return dir;
+  }
+
+  /// Читает теги файла и сохраняет обложку (если она есть) в память приложения.
+  Future<_Tags> _readTags(String audioPath) async {
+    try {
+      final meta = readMetadata(File(audioPath), getImage: true);
+      var thumb = '';
+      if (meta.pictures.isNotEmpty) {
+        final root = await _storageDir();
+        final covers = Directory('${root.path}/covers');
+        if (!await covers.exists()) await covers.create(recursive: true);
+        final coverFile = File('${covers.path}/${audioPath.split('/').last}.jpg');
+        await coverFile.writeAsBytes(meta.pictures.first.bytes);
+        thumb = coverFile.path;
+      }
+      final title = meta.title?.trim();
+      final artist = meta.artist?.trim();
+      return _Tags(
+        (title == null || title.isEmpty) ? null : title,
+        (artist == null || artist.isEmpty) ? null : artist,
+        thumb,
+        meta.duration?.inMilliseconds ?? 0,
+      );
+    } catch (e) {
+      debugPrint('Tags read error: $e');
+      return const _Tags(null, null, '', 0);
+    }
   }
 
   Future<void> _load() async {
@@ -81,13 +230,15 @@ class LibraryStore extends ChangeNotifier {
           final map = item as Map<String, dynamic>;
           final path = map['path'] as String;
           if (!await File(path).exists()) continue; // файл пропал — пропускаем
+          var thumb = (map['thumbnail'] as String?) ?? '';
+          if (thumb.isNotEmpty && !await File(thumb).exists()) thumb = '';
           _tracks.add(
-            Track(
-              title: map['title'] as String,
-              artist: map['artist'] as String,
-              thumbnail: '',
-              streamUrl: path,
-              duration: Duration.zero,
+            _make(
+              map['title'] as String,
+              map['artist'] as String,
+              path,
+              thumb,
+              (map['durationMs'] as int?) ?? 0,
             ),
           );
         }
@@ -106,6 +257,37 @@ class LibraryStore extends ChangeNotifier {
     }
     loaded = true;
     notifyListeners();
+    unawaited(_enrichCovers());
+  }
+
+  /// Для треков без обложки пробуем достать её из тегов файла.
+  Future<void> _enrichCovers() async {
+    var changed = false;
+    for (var i = 0; i < _tracks.length; i++) {
+      final t = _tracks[i];
+      if (t.thumbnail.isNotEmpty) continue;
+      final tags = await _readTags(t.streamUrl);
+      final gainedDuration =
+          t.duration == Duration.zero && tags.durationMs > 0;
+      if (tags.thumbnail.isEmpty && !gainedDuration) continue;
+      if (i >= _tracks.length || _tracks[i].streamUrl != t.streamUrl) continue;
+
+      final artist = (t.artist == _unknownArtist && tags.artist != null)
+          ? tags.artist!
+          : t.artist;
+      _tracks[i] = _make(
+        t.title,
+        artist,
+        t.streamUrl,
+        tags.thumbnail,
+        tags.durationMs > 0 ? tags.durationMs : t.duration.inMilliseconds,
+      );
+      changed = true;
+    }
+    if (changed) {
+      notifyListeners();
+      unawaited(_save());
+    }
   }
 
   Future<void> _save() async {
@@ -117,6 +299,8 @@ class LibraryStore extends ChangeNotifier {
                   'title': t.title,
                   'artist': t.artist,
                   'path': t.streamUrl,
+                  'thumbnail': t.thumbnail,
+                  'durationMs': t.duration.inMilliseconds,
                 })
             .toList(),
         'favorites': _favorites.toList(),
@@ -151,13 +335,14 @@ class LibraryStore extends ChangeNotifier {
       }
 
       final parts = _splitName(file.name);
+      final tags = await _readTags(target);
       _tracks.add(
-        Track(
-          title: parts[1],
-          artist: parts[0],
-          thumbnail: '',
-          streamUrl: target,
-          duration: Duration.zero,
+        _make(
+          tags.title ?? parts[1],
+          tags.artist ?? parts[0],
+          target,
+          tags.thumbnail,
+          tags.durationMs,
         ),
       );
       added++;
@@ -187,6 +372,9 @@ class LibraryStore extends ChangeNotifier {
     _history.remove(track.streamUrl);
     if (track.streamUrl.contains('/storix/music/')) {
       unawaited(_deleteFile(track.streamUrl));
+    }
+    if (track.thumbnail.contains('/storix/covers/')) {
+      unawaited(_deleteFile(track.thumbnail));
     }
     notifyListeners();
     unawaited(_save());
@@ -225,6 +413,8 @@ class PlaybackController extends ChangeNotifier {
 
   bool get hasNext => _index >= 0 && _index < _queue.length - 1;
   bool get hasPrevious => _index > 0;
+  List<Track> get queue => List.unmodifiable(_queue);
+  int get index => _index;
 
   /// Вызывается из библиотеки перед запуском трека: что играть дальше.
   void setQueue(List<Track> tracks) {
@@ -286,6 +476,12 @@ class PlaybackController extends ChangeNotifier {
     }
     await play(_queue[_index - 1]);
   }
+
+  Future<void> playAt(int i) async {
+    final play = _play;
+    if (play == null || i < 0 || i >= _queue.length) return;
+    await play(_queue[i]);
+  }
 }
 
 // --- БИБЛИОТЕКА: ЛОКАЛЬНАЯ МУЗЫКА ---
@@ -320,15 +516,7 @@ class LocalLibraryScreen extends StatelessWidget {
   Widget _buildTile(Track track, List<Track> all) {
     final isFav = LibraryStore.instance.isFavorite(track);
     return ListTile(
-      leading: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: Colors.white10,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Icon(Icons.music_note_rounded, color: Colors.white54),
-      ),
+      leading: TrackArt(track: track, size: 48, radius: 10),
       title: Text(
         track.title,
         maxLines: 1,
@@ -350,8 +538,8 @@ class LocalLibraryScreen extends StatelessWidget {
         children: [
           IconButton(
             icon: Icon(
-              isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-              color: isFav ? Colors.pinkAccent : Colors.white54,
+              isFav ? Icons.star_rounded : Icons.star_border_rounded,
+              color: isFav ? const Color(0xFFFFD54F) : Colors.white54,
             ),
             onPressed: () => LibraryStore.instance.toggleFavorite(track),
           ),
