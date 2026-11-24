@@ -170,9 +170,38 @@ class LibraryStore extends ChangeNotifier {
 
   bool isFavorite(Track track) => _favorites.contains(track.streamUrl);
 
+  /// Убирает из названия мусор: подчёркивания, цифры-id, рекламу сайтов
+  /// и имя исполнителя в начале ("Артист - Название").
+  static String _cleanTitle(String raw, String artist) {
+    const tlds = 'net|com|ru|org|me|su|fm|io|cc|to|xyz|info';
+    var t = raw.replaceAll('_', ' ');
+    // реклама сайтов: "(Rmuz.net)", "[site.ru]"
+    t = t.replaceAll(
+      RegExp(r'\s*[\(\[][^\)\]]*\.(?:' + tlds + r')\b[^\)\]]*[\)\]]',
+          caseSensitive: false),
+      '',
+    );
+    // и просто "site.com" в конце
+    t = t.replaceAll(
+      RegExp(r'\s*\b[\w-]+\.(?:' + tlds + r')\b\s*$', caseSensitive: false),
+      '',
+    );
+    t = t.replaceAll(RegExp(r'\s*\d{6,}\s*$'), ''); // хвост из цифр (id с сайта)
+    t = t.replaceAll(RegExp(r'\s+'), ' ').trim();
+
+    final sep = t.indexOf(' - ');
+    if (sep > 0 && sep + 3 < t.length) {
+      final left = t.substring(0, sep).trim().toLowerCase();
+      if (left == artist.trim().toLowerCase()) {
+        t = t.substring(sep + 3).trim();
+      }
+    }
+    return t.isEmpty ? raw : t;
+  }
+
   Track _make(String title, String artist, String path, String thumb, int ms) {
     return Track(
-      title: title,
+      title: _cleanTitle(title, artist),
       artist: artist,
       thumbnail: thumb,
       streamUrl: path,
