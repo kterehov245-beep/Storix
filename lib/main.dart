@@ -641,7 +641,7 @@ class _SearchScreenState extends State<SearchScreen> {
             artist: track.user.username,
             thumbnail: track.artworkUrl?.toString() ?? '', // Берем реальную обложку
             streamUrl: streamInfo.url.toString(), // Реальная ссылка на аудио
-            duration: Duration(milliseconds: (track.duration ?? 0) * 1000),
+            duration: Duration(milliseconds: ((track.duration ?? 0) * 1000).toInt()),
           ));
         } catch (e) {
           // Если трек платный или недоступен, пропускаем его
