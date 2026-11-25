@@ -614,78 +614,260 @@ class _SearchScreenState extends State<SearchScreen> {
   List<Track> _results = [];
   bool _isLoading = false;
 
-Future<void> _search(String query) async {
-  if (query.isEmpty) return;
-  setState(() {
-    _isLoading = true;
-    _results = [];
-  });
-
-  try {
-    debugPrint('--- НАЧАЛО ПОИСКА: $query ---');
-    
-    // Пытаемся найти треки с жестким таймаутом
-    final searchResult = await widget.scClient.search.getTracks(query).first.timeout(
-      const Duration(seconds: 10),
-      onTimeout: () {
-        throw Exception('SoundCloud не ответил за 10 секунд (возможно, блокировка)');
-      },
-    );
-
-    debugPrint('--- НАЙДЕНО ТРЕКОВ: ${searchResult.length} ---');
-
-    List<Track> foundTracks = [];
-
-    for (var track in searchResult) {
-      try {
-        debugPrint('Загрузка стрима для: ${track.title}');
-        
-        final streams = await widget.scClient.tracks.getStreams(track.id).timeout(
-          const Duration(seconds: 5),
-        );
-
-        if (streams.isEmpty) continue;
-
-        final streamInfo = streams.firstWhere(
-          (s) => s.container == 'mp3',
-          orElse: () => streams.first,
-        );
-
-        foundTracks.add(Track(
-          title: track.title,
-          artist: track.user.username,
-          thumbnail: track.artworkUrl?.toString() ?? '',
-          streamUrl: streamInfo.url.toString(),
-          duration: Duration(milliseconds: ((track.duration ?? 0) * 1000).toInt()),
-        ));
-
-      } catch (e) {
-        debugPrint('Ошибка стрима для ${track.title}: $e');
-      }
-    }
-
+  Future<void> _search(String query) async {
+    if (query.isEmpty) return;
     setState(() {
-      _results = foundTracks;
+      _isLoading = true;
+      _results = [];
     });
-    
-    if (foundTracks.isEmpty) {
-      throw Exception('Треки найдены, но ни один не доступен для прослушивания');
-    }
 
-  } catch (e) {
-    debugPrint('!!! ОШИБКА ПОИСКА: $e !!!');
-    if (mounted) {
-      // ПОКАЗЫВАЕМ ОШИБКУ НА ЭКРАНЕ
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()), 
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 5),
-        ),
+    try {
+      debugPrint('--- НАЧАЛО ПОИСКА: $query ---');
+      
+      final searchResult = await widget.scClient.search.getTracks(query).first.timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('SoundCloud не ответил за 10 секунд (возможно, блокировка)');
+        },
       );
+
+      debugPrint('--- НАЙДЕНО ТРЕКОВ: ${searchResult.length} ---');
+
+      List<Track> foundTracks = [];
+
+      for (var track in searchResult) {
+        try {
+          debugPrint('Загрузка стрима для: ${track.title}');
+          
+          final streams = await widget.scClient.tracks.getStreams(track.id).timeout(
+            const Duration(seconds: 5),
+          );
+
+          if (streams.isEmpty) continue;
+
+          final streamInfo = streams.firstWhere(
+            (s) => s.container == 'mp3',
+            orElse: () => streams.first,
+          );
+
+          foundTracks.add(Track(
+            title: track.title,
+            artist: track.user.username,
+            thumbnail: track.artworkUrl?.toString() ?? '',
+            streamUrl: streamInfo.url.toString(),
+            duration: Duration(milliseconds: ((track.duration ?? 0) * 1000).toInt()),
+          ));
+
+        } catch (e) {
+          debugPrint('Ошибка стрима для ${track.title}: $e');
+        }
+      }
+
+      setState(() {
+        _results = foundTracks;
+      });
+      
+      if (foundTracks.isEmpty) {
+        throw Exception('Треки найдены, но ни один не доступен для прослушивания');
+      }
+
+    } catch (e) {
+      debugPrint('!!! ОШИБКА ПОИСКА: $e !!!');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()), 
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-  } finally {
-    if (mounted) setState(() => _isLoading = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 180),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: TextField(
+                controller: _controller,
+                onSubmitted: _search,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Поиск треков в SoundCloud...',
+                  hintStyle: const TextStyle(color: Colors.white54),
+                  prefixIcon: const Icon(Icons.search, color: Colors.white54),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.1),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
+            
+            if (_isLoading)
+              const CircularProgressIndicator(color: Colors.blueAccent),
+            
+            Expanded(
+              child: ListView.builder(
+                itemCount: _results.length,
+                itemBuilder: (context, index) {
+                  final track = _results[index];
+                  return ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    leading: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: track.thumbnail.isNotEmpty
+                          ? Image.network(
+                              track.thumbnail,
+                              width: 50,
+                              height: 50,
+                              fit: BoxFit.cover,
+                              errorBuilder: (c, e, s) => Container(color: Colors.grey, width: 50, height: 50, child: const Icon(Icons.music_note)),
+                            )
+                          : Container(color: Colors.grey, width: 50, height: 50, child: const Icon(Icons.music_note)),
+                    ),
+                    title: Text(track.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: Text(track.artist, style: const TextStyle(color: Colors.white54), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.play_circle_fill, color: Colors.blueAccent, size: 36),
+                      onPressed: () => widget.onPlay(track), 
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+} // <--- ВОТ ЭТА СКОБКА ЗАКРЫВАЕТ ПОИСК. ЕСЛИ ЕЕ НЕТ, ВСЁ ЛОМАЕТСЯ.
+
+// --- ПОЛНОЭКРАННЫЙ ПЛЕЕР ---
+class PlayerScreen extends StatefulWidget {
+  final Track track;
+  final AudioPlayer player;
+  const PlayerScreen({super.key, required this.track, required this.player});
+
+  @override
+  State<PlayerScreen> createState() => _PlayerScreenState();
+}
+
+class _PlayerScreenState extends State<PlayerScreen> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.network(widget.track.thumbnail, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: Colors.black)),
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+            child: Container(color: Colors.black.withOpacity(0.6)),
+          ),
+          SafeArea(
+            child: Column(
+              children: [
+                Align(
+                  alignment: Alignment.topLeft,
+                  child: IconButton(
+                    icon: const Icon(Icons.keyboard_arrow_down, size: 40, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  width: 280, height: 280,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 30, offset: const Offset(0, 10))],
+                    image: DecorationImage(image: NetworkImage(widget.track.thumbnail), fit: BoxFit.cover),
+                  ),
+                ),
+                const SizedBox(height: 40),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Text(widget.track.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+                ),
+                const SizedBox(height: 8),
+                Text(widget.track.artist, style: const TextStyle(fontSize: 16, color: Colors.white70)),
+                const SizedBox(height: 30),
+                StreamBuilder<Duration>(
+                  stream: widget.player.positionStream,
+                  builder: (context, snapshot) {
+                    final position = snapshot.data ?? Duration.zero;
+                    final duration = widget.track.duration;
+                    final max = duration.inMilliseconds.toDouble();
+                    final value = position.inMilliseconds.toDouble().clamp(0.0, max > 0 ? max : 1.0);
+                    
+                    return Column(
+                      children: [
+                        Slider(
+                          value: value,
+                          max: max == 0 ? 1.0 : max,
+                          activeColor: Colors.white,
+                          inactiveColor: Colors.white24,
+                          onChanged: (v) => widget.player.seek(Duration(milliseconds: v.toInt())),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(_format(position), style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                              Text(_format(duration), style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    IconButton(icon: const Icon(Icons.skip_previous_rounded, size: 45, color: Colors.white), onPressed: () {}),
+                    StreamBuilder<PlayerState>(
+                      stream: widget.player.playerStateStream,
+                      builder: (context, snapshot) {
+                        final playing = snapshot.data?.playing ?? false;
+                        return Container(
+                          decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                          child: IconButton(
+                            icon: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded, size: 45, color: Colors.black),
+                            onPressed: () => playing ? widget.player.pause() : widget.player.play(),
+                          ),
+                        );
+                      },
+                    ),
+                    IconButton(icon: const Icon(Icons.skip_next_rounded, size: 45, color: Colors.white), onPressed: () {}),
+                  ],
+                ),
+                const SizedBox(height: 50),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _format(Duration d) {
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$m:$s';
   }
 }
 // --- ПОЛНОЭКРАННЫЙ ПЛЕЕР ---
