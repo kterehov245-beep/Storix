@@ -615,78 +615,6 @@ class _SearchScreenState extends State<SearchScreen> {
   bool _isLoading = false;
 
   Future<void> _search(String query) async {
-  if (query.isEmpty) return;
-  setState(() {
-    _isLoading = true;
-    _results = [];
-  });
-
-  try {
-    print('--- НАЧАЛО ПОИСКА: $query ---');
-    
-    // 1. Поиск с таймаутом 15 секунд
-    final searchResult = await widget.scClient.search.getTracks(query).first.timeout(
-      const Duration(seconds: 15),
-      onTimeout: () {
-        print('!!! ТАЙМАУТ ПРИ ПОИСКЕ ТРЕКОВ !!!');
-        return <TrackSearchResult>[]; 
-      },
-    );
-
-    print('--- НАЙДЕНО ТРЕКОВ: ${searchResult.length} ---');
-
-    List<Track> foundTracks = [];
-
-    for (var track in searchResult) {
-      try {
-        print('Загрузка стрима для: ${track.title}');
-        
-        // 2. Получение стрима с таймаутом 10 секунд
-        final streams = await widget.scClient.tracks.getStreams(track.id).timeout(
-          const Duration(seconds: 10),
-          onTimeout: () => [], 
-        );
-
-        if (streams.isEmpty) {
-          print('Стримы не найдены для: ${track.title}');
-          continue;
-        }
-
-        final streamInfo = streams.firstWhere(
-          (s) => s.container == 'mp3',
-          orElse: () => streams.first,
-        );
-
-        foundTracks.add(Track(
-          title: track.title,
-          artist: track.user.username,
-          thumbnail: track.artworkUrl?.toString() ?? '',
-          streamUrl: streamInfo.url.toString(),
-          duration: Duration(milliseconds: ((track.duration ?? 0) * 1000).toInt()),
-        ));
-
-        print('УСПЕХ: ${track.title}');
-      } catch (e) {
-        print('Ошибка стрима для ${track.title}: $e');
-      }
-    }
-
-    setState(() {
-      _results = foundTracks;
-    });
-    print('--- ПОИСК ЗАВЕРШЕН, НАЙДЕНО: ${foundTracks.length} ---');
-
-  } catch (e) {
-    print('!!! ОШИБКА ПОИСКА: $e !!!');
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка: $e'), backgroundColor: Colors.red),
-      );
-    }
-  } finally {
-    if (mounted) setState(() => _isLoading = false);
-  }
-  }
     if (query.isEmpty) return;
     setState(() {
       _isLoading = true;
@@ -694,41 +622,63 @@ class _SearchScreenState extends State<SearchScreen> {
     });
 
     try {
-      // Ищем треки в SoundCloud
-      final searchResult = await widget.scClient.search.getTracks(query).first;
+      debugPrint('--- НАЧАЛО ПОИСКА: $query ---');
+      
+      final searchResult = await widget.scClient.search.getTracks(query).first.timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          debugPrint('!!! ТАЙМАУТ ПРИ ПОИСКЕ ТРЕКОВ !!!');
+          return <TrackSearchResult>[]; 
+        },
+      );
+
+      debugPrint('--- НАЙДЕНО ТРЕКОВ: ${searchResult.length} ---');
+
       List<Track> foundTracks = [];
 
       for (var track in searchResult) {
-        // Пытаемся получить стрим (ссылку на mp3)
         try {
-          final streams = await widget.scClient.tracks.getStreams(track.id);
-          // Ищем mp3 поток
+          debugPrint('Загрузка стрима для: ${track.title}');
+          
+          final streams = await widget.scClient.tracks.getStreams(track.id).timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => [], 
+          );
+
+          if (streams.isEmpty) {
+            debugPrint('Стримы не найдены для: ${track.title}');
+            continue;
+          }
+
           final streamInfo = streams.firstWhere(
             (s) => s.container == 'mp3',
-            orElse: () => streams.first, // Если mp3 нет, берем первый попавшийся
+            orElse: () => streams.first,
           );
 
           foundTracks.add(Track(
             title: track.title,
             artist: track.user.username,
-            thumbnail: track.artworkUrl?.toString() ?? '', // Берем реальную обложку
-            streamUrl: streamInfo.url.toString(), // Реальная ссылка на аудио
+            thumbnail: track.artworkUrl?.toString() ?? '',
+            streamUrl: streamInfo.url.toString(),
             duration: Duration(milliseconds: ((track.duration ?? 0) * 1000).toInt()),
           ));
+
+          debugPrint('УСПЕХ: ${track.title}');
         } catch (e) {
-          // Если трек платный или недоступен, пропускаем его
-          debugPrint('Пропущен трек ${track.title}: $e');
+          debugPrint('Ошибка стрима для ${track.title}: $e');
         }
       }
 
       setState(() {
         _results = foundTracks;
       });
+      debugPrint('--- ПОИСК ЗАВЕРШЕН, НАЙДЕНО: ${foundTracks.length} ---');
+
     } catch (e) {
-      debugPrint('Ошибка поиска: $e');
+      debugPrint('!!! ОШИБКА ПОИСКА: $e !!!');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка поиска: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Ошибка: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -804,7 +754,6 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 }
-
 // --- ПОЛНОЭКРАННЫЙ ПЛЕЕР ---
 class PlayerScreen extends StatefulWidget {
   final Track track;
