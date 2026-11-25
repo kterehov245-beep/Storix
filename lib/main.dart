@@ -623,7 +623,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
     try {
       // Ищем треки в SoundCloud
-      final searchResult = await widget.scClient.tracks.search(query);
+      final searchResult = await widget.scClient.search.getTracks(query).first;
       List<Track> foundTracks = [];
 
       for (var track in searchResult) {
