@@ -616,43 +616,49 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Future<void> _search(String query) async {
     if (query.isEmpty) return;
-    setState(() { _isLoading = true; _results = []; });
-    
+    setState(() {
+      _isLoading = true;
+      _results = [];
+    });
+
     try {
-      final stream = widget.scClient.search(query, searchFilter: SearchFilter.tracks);
-      final trackResults = await stream.first;
-
+      // Ищем треки в SoundCloud
+      final searchResult = await widget.scClient.tracks.search(query);
       List<Track> foundTracks = [];
-      for (var result in trackResults) {
-        if (result is TrackSearchResult) {
-          final track = result;
-          try {
-            final streams = await widget.scClient.tracks.getStreams(track.id);
-            final streamInfo = streams.firstWhere(
-              (s) => s.container == 'mp3' || s.container == 'audio/mpeg', 
-              orElse: () => streams.first
-            );
 
-            foundTracks.add(Track(
-              title: track.title,
-              artist: track.user.username,
-              thumbnail: track.artworkUrl?.toString() ?? '',
-              streamUrl: streamInfo.url.toString(),
-              duration: Duration(milliseconds: (track.duration * 1000).toInt()),
-            ));
-          } catch (e) {
-            // Если для трека нет доступного потока (например, требуется SoundCloud Go), пропускаем его
-            debugPrint('Skipping track ${track.title}: $e');
-          }
+      for (var track in searchResult) {
+        // Пытаемся получить стрим (ссылку на mp3)
+        try {
+          final streams = await widget.scClient.tracks.getStreams(track.id);
+          // Ищем mp3 поток
+          final streamInfo = streams.firstWhere(
+            (s) => s.container == 'mp3',
+            orElse: () => streams.first, // Если mp3 нет, берем первый попавшийся
+          );
+
+          foundTracks.add(Track(
+            title: track.title,
+            artist: track.user.username,
+            thumbnail: track.artworkUrl?.toString() ?? '', // Берем реальную обложку
+            streamUrl: streamInfo.url.toString(), // Реальная ссылка на аудио
+            duration: Duration(milliseconds: (track.duration ?? 0) * 1000),
+          ));
+        } catch (e) {
+          // Если трек платный или недоступен, пропускаем его
+          debugPrint('Пропущен трек ${track.title}: $e');
         }
       }
 
       setState(() {
         _results = foundTracks;
       });
-
     } catch (e) {
-      debugPrint('Search error: $e');
+      debugPrint('Ошибка поиска: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка поиска: $e'), backgroundColor: Colors.red),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -663,39 +669,58 @@ class _SearchScreenState extends State<SearchScreen> {
     return SafeArea(
       bottom: false,
       child: Padding(
-        padding: const EdgeInsets.only(bottom: 180),
+        padding: const EdgeInsets.only(bottom: 180), // Отступ под мини-плеер
         child: Column(
           children: [
+            // Поле ввода поиска
             Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(20.0),
               child: TextField(
                 controller: _controller,
                 onSubmitted: _search,
+                style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  hintText: 'Поиск треков на SoundCloud...',
+                  hintText: 'Поиск треков в SoundCloud...',
                   hintStyle: const TextStyle(color: Colors.white54),
                   prefixIcon: const Icon(Icons.search, color: Colors.white54),
-                  filled: true, fillColor: const Color(0xFF231C33).withOpacity(0.8),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.1),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
               ),
             ),
-            if (_isLoading) const CircularProgressIndicator(color: Colors.blueAccent),
+            
+            if (_isLoading)
+              const CircularProgressIndicator(color: Colors.blueAccent),
+            
+            // Список найденных треков
             Expanded(
               child: ListView.builder(
                 itemCount: _results.length,
                 itemBuilder: (context, index) {
                   final track = _results[index];
                   return ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                     leading: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.network(track.thumbnail, width: 60, height: 60, fit: BoxFit.cover, errorBuilder: (_,__,___) => Container(width: 60, height: 60, color: Colors.grey)),
+                      child: track.thumbnail.isNotEmpty
+                          ? Image.network(
+                              track.thumbnail,
+                              width: 50,
+                              height: 50,
+                              fit: BoxFit.cover,
+                              errorBuilder: (c, e, s) => Container(color: Colors.grey, width: 50, height: 50, child: const Icon(Icons.music_note)),
+                            )
+                          : Container(color: Colors.grey, width: 50, height: 50, child: const Icon(Icons.music_note)),
                     ),
-                    title: Text(track.title, style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 2, overflow: TextOverflow.ellipsis),
-                    subtitle: Text(track.artist, style: const TextStyle(color: Colors.white54)),
+                    title: Text(track.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: Text(track.artist, style: const TextStyle(color: Colors.white54), maxLines: 1, overflow: TextOverflow.ellipsis),
                     trailing: IconButton(
-                      icon: const Icon(Icons.play_circle_fill, color: Colors.blueAccent, size: 40),
-                      onPressed: () => widget.onPlay(track),
+                      icon: const Icon(Icons.play_circle_fill, color: Colors.blueAccent, size: 36),
+                      onPressed: () => widget.onPlay(track), // ЗАПУСК ТРЕКА!
                     ),
                   );
                 },
