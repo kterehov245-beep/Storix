@@ -600,6 +600,20 @@ class FavoritesScreen extends StatelessWidget {
   }
 }
 // --- ПОИСК С ИСПРАВЛЕННЫМ SOUNDCLOUD ---
+class SearchScreen extends StatefulWidget {
+  final Function(Track) onPlay;
+  final SoundcloudClient scClient;
+  const SearchScreen({super.key, required this.onPlay, required this.scClient});
+
+  @override
+  State<SearchScreen> createState() => _SearchScreenState();
+}
+
+class _SearchScreenState extends State<SearchScreen> {
+  final TextEditingController _controller = TextEditingController();
+  List<Track> _results = [];
+  bool _isLoading = false;
+
 Future<void> _search(String query) async {
   if (query.isEmpty) return;
   setState(() {
