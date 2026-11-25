@@ -615,6 +615,78 @@ class _SearchScreenState extends State<SearchScreen> {
   bool _isLoading = false;
 
   Future<void> _search(String query) async {
+  if (query.isEmpty) return;
+  setState(() {
+    _isLoading = true;
+    _results = [];
+  });
+
+  try {
+    print('--- НАЧАЛО ПОИСКА: $query ---');
+    
+    // 1. Поиск с таймаутом 15 секунд
+    final searchResult = await widget.scClient.search.getTracks(query).first.timeout(
+      const Duration(seconds: 15),
+      onTimeout: () {
+        print('!!! ТАЙМАУТ ПРИ ПОИСКЕ ТРЕКОВ !!!');
+        return <TrackSearchResult>[]; 
+      },
+    );
+
+    print('--- НАЙДЕНО ТРЕКОВ: ${searchResult.length} ---');
+
+    List<Track> foundTracks = [];
+
+    for (var track in searchResult) {
+      try {
+        print('Загрузка стрима для: ${track.title}');
+        
+        // 2. Получение стрима с таймаутом 10 секунд
+        final streams = await widget.scClient.tracks.getStreams(track.id).timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => [], 
+        );
+
+        if (streams.isEmpty) {
+          print('Стримы не найдены для: ${track.title}');
+          continue;
+        }
+
+        final streamInfo = streams.firstWhere(
+          (s) => s.container == 'mp3',
+          orElse: () => streams.first,
+        );
+
+        foundTracks.add(Track(
+          title: track.title,
+          artist: track.user.username,
+          thumbnail: track.artworkUrl?.toString() ?? '',
+          streamUrl: streamInfo.url.toString(),
+          duration: Duration(milliseconds: ((track.duration ?? 0) * 1000).toInt()),
+        ));
+
+        print('УСПЕХ: ${track.title}');
+      } catch (e) {
+        print('Ошибка стрима для ${track.title}: $e');
+      }
+    }
+
+    setState(() {
+      _results = foundTracks;
+    });
+    print('--- ПОИСК ЗАВЕРШЕН, НАЙДЕНО: ${foundTracks.length} ---');
+
+  } catch (e) {
+    print('!!! ОШИБКА ПОИСКА: $e !!!');
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка: $e'), backgroundColor: Colors.red),
+      );
+    }
+  } finally {
+    if (mounted) setState(() => _isLoading = false);
+  }
+  }
     if (query.isEmpty) return;
     setState(() {
       _isLoading = true;
