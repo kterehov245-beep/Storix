@@ -600,158 +600,78 @@ class FavoritesScreen extends StatelessWidget {
   }
 }
 // --- ПОИСК С ИСПРАВЛЕННЫМ SOUNDCLOUD ---
-class SearchScreen extends StatefulWidget {
-  final Function(Track) onPlay;
-  final SoundcloudClient scClient;
-  const SearchScreen({super.key, required this.onPlay, required this.scClient});
+Future<void> _search(String query) async {
+  if (query.isEmpty) return;
+  setState(() {
+    _isLoading = true;
+    _results = [];
+  });
 
-  @override
-  State<SearchScreen> createState() => _SearchScreenState();
-}
-
-class _SearchScreenState extends State<SearchScreen> {
-  final TextEditingController _controller = TextEditingController();
-  List<Track> _results = [];
-  bool _isLoading = false;
-
-  Future<void> _search(String query) async {
-    if (query.isEmpty) return;
-    setState(() {
-      _isLoading = true;
-      _results = [];
-    });
-
-    try {
-      debugPrint('--- НАЧАЛО ПОИСКА: $query ---');
-      
-      final searchResult = await widget.scClient.search.getTracks(query).first.timeout(
-        const Duration(seconds: 15),
-        onTimeout: () {
-          debugPrint('!!! ТАЙМАУТ ПРИ ПОИСКЕ ТРЕКОВ !!!');
-          return <TrackSearchResult>[]; 
-        },
-      );
-
-      debugPrint('--- НАЙДЕНО ТРЕКОВ: ${searchResult.length} ---');
-
-      List<Track> foundTracks = [];
-
-      for (var track in searchResult) {
-        try {
-          debugPrint('Загрузка стрима для: ${track.title}');
-          
-          final streams = await widget.scClient.tracks.getStreams(track.id).timeout(
-            const Duration(seconds: 10),
-            onTimeout: () => [], 
-          );
-
-          if (streams.isEmpty) {
-            debugPrint('Стримы не найдены для: ${track.title}');
-            continue;
-          }
-
-          final streamInfo = streams.firstWhere(
-            (s) => s.container == 'mp3',
-            orElse: () => streams.first,
-          );
-
-          foundTracks.add(Track(
-            title: track.title,
-            artist: track.user.username,
-            thumbnail: track.artworkUrl?.toString() ?? '',
-            streamUrl: streamInfo.url.toString(),
-            duration: Duration(milliseconds: ((track.duration ?? 0) * 1000).toInt()),
-          ));
-
-          debugPrint('УСПЕХ: ${track.title}');
-        } catch (e) {
-          debugPrint('Ошибка стрима для ${track.title}: $e');
-        }
-      }
-
-      setState(() {
-        _results = foundTracks;
-      });
-      debugPrint('--- ПОИСК ЗАВЕРШЕН, НАЙДЕНО: ${foundTracks.length} ---');
-
-    } catch (e) {
-      debugPrint('!!! ОШИБКА ПОИСКА: $e !!!');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка: $e'), backgroundColor: Colors.red),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      bottom: false,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 180), // Отступ под мини-плеер
-        child: Column(
-          children: [
-            // Поле ввода поиска
-            Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: TextField(
-                controller: _controller,
-                onSubmitted: _search,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Поиск треков в SoundCloud...',
-                  hintStyle: const TextStyle(color: Colors.white54),
-                  prefixIcon: const Icon(Icons.search, color: Colors.white54),
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(0.1),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-            ),
-            
-            if (_isLoading)
-              const CircularProgressIndicator(color: Colors.blueAccent),
-            
-            // Список найденных треков
-            Expanded(
-              child: ListView.builder(
-                itemCount: _results.length,
-                itemBuilder: (context, index) {
-                  final track = _results[index];
-                  return ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                    leading: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: track.thumbnail.isNotEmpty
-                          ? Image.network(
-                              track.thumbnail,
-                              width: 50,
-                              height: 50,
-                              fit: BoxFit.cover,
-                              errorBuilder: (c, e, s) => Container(color: Colors.grey, width: 50, height: 50, child: const Icon(Icons.music_note)),
-                            )
-                          : Container(color: Colors.grey, width: 50, height: 50, child: const Icon(Icons.music_note)),
-                    ),
-                    title: Text(track.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-                    subtitle: Text(track.artist, style: const TextStyle(color: Colors.white54), maxLines: 1, overflow: TextOverflow.ellipsis),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.play_circle_fill, color: Colors.blueAccent, size: 36),
-                      onPressed: () => widget.onPlay(track), // ЗАПУСК ТРЕКА!
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
+  try {
+    debugPrint('--- НАЧАЛО ПОИСКА: $query ---');
+    
+    // Пытаемся найти треки с жестким таймаутом
+    final searchResult = await widget.scClient.search.getTracks(query).first.timeout(
+      const Duration(seconds: 10),
+      onTimeout: () {
+        throw Exception('SoundCloud не ответил за 10 секунд (возможно, блокировка)');
+      },
     );
+
+    debugPrint('--- НАЙДЕНО ТРЕКОВ: ${searchResult.length} ---');
+
+    List<Track> foundTracks = [];
+
+    for (var track in searchResult) {
+      try {
+        debugPrint('Загрузка стрима для: ${track.title}');
+        
+        final streams = await widget.scClient.tracks.getStreams(track.id).timeout(
+          const Duration(seconds: 5),
+        );
+
+        if (streams.isEmpty) continue;
+
+        final streamInfo = streams.firstWhere(
+          (s) => s.container == 'mp3',
+          orElse: () => streams.first,
+        );
+
+        foundTracks.add(Track(
+          title: track.title,
+          artist: track.user.username,
+          thumbnail: track.artworkUrl?.toString() ?? '',
+          streamUrl: streamInfo.url.toString(),
+          duration: Duration(milliseconds: ((track.duration ?? 0) * 1000).toInt()),
+        ));
+
+      } catch (e) {
+        debugPrint('Ошибка стрима для ${track.title}: $e');
+      }
+    }
+
+    setState(() {
+      _results = foundTracks;
+    });
+    
+    if (foundTracks.isEmpty) {
+      throw Exception('Треки найдены, но ни один не доступен для прослушивания');
+    }
+
+  } catch (e) {
+    debugPrint('!!! ОШИБКА ПОИСКА: $e !!!');
+    if (mounted) {
+      // ПОКАЗЫВАЕМ ОШИБКУ НА ЭКРАНЕ
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()), 
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    }
+  } finally {
+    if (mounted) setState(() => _isLoading = false);
   }
 }
 // --- ПОЛНОЭКРАННЫЙ ПЛЕЕР ---
