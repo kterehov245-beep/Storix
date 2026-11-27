@@ -809,7 +809,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     final position = snapshot.data ?? Duration.zero;
                     final duration = widget.track.duration;
                     final max = duration.inMilliseconds.toDouble();
-                    final value = position.inMilliseconds.toDouble().clamp(0.0, max > 0 ? max : 1.0);
+                    final double value = position.inMilliseconds.toDouble().clamp(0.0, max > 0 ? max : 1.0).toDouble();
                     
                     return Column(
                       children: [
