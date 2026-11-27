@@ -871,14 +871,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 }
 // --- ПОЛНОЭКРАННЫЙ ПЛЕЕР ---
-class PlayerScreen extends StatefulWidget {
-  final Track track;
-  final AudioPlayer player;
-  const PlayerScreen({super.key, required this.track, required this.player});
-  @override
-  State<PlayerScreen> createState() => _PlayerScreenState();
-}
-
 class _PlayerScreenState extends State<PlayerScreen> {
   @override
   Widget build(BuildContext context) {
