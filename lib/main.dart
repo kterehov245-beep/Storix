@@ -742,7 +742,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     trailing: IconButton(
                       icon: const Icon(Icons.play_circle_fill, color: Colors.blueAccent, size: 36),
                       onPressed: () => widget.onPlay(track), 
-                    ),
+                    )
                   );
                 },
               ),
@@ -853,101 +853,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       },
                     ),
                     IconButton(icon: const Icon(Icons.skip_next_rounded, size: 45, color: Colors.white), onPressed: () {}),
-                  ],
-                ),
-                const SizedBox(height: 50),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _format(Duration d) {
-    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$m:$s';
-  }
-}
-// --- ПОЛНОЭКРАННЫЙ ПЛЕЕР ---
-class _PlayerScreenState extends State<PlayerScreen> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          Image.network(widget.track.thumbnail, fit: BoxFit.cover, errorBuilder: (_,__,___) => Container(color: Colors.black)),
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-            child: Container(color: Colors.black.withOpacity(0.6)),
-          ),
-          SafeArea(
-            child: Column(
-              children: [
-                Align(alignment: Alignment.topLeft, child: IconButton(icon: const Icon(Icons.keyboard_arrow_down, size: 35), onPressed: () => Navigator.pop(context))),
-                const Spacer(),
-                Container(
-                  width: 280, height: 280,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 30, offset: const Offset(0, 15))],
-                    image: DecorationImage(image: NetworkImage(widget.track.thumbnail), fit: BoxFit.cover),
-                  ),
-                ),
-                const SizedBox(height: 40),
-                Text(widget.track.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold), textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 8),
-                Text(widget.track.artist, style: const TextStyle(fontSize: 16, color: Colors.white70)),
-                const SizedBox(height: 30),
-                StreamBuilder<Duration>(
-                  stream: widget.player.positionStream,
-                  builder: (context, snapshot) {
-                    final position = snapshot.data ?? Duration.zero;
-                    final duration = widget.player.duration ?? widget.track.duration;
-                    final max = duration.inMilliseconds.toDouble();
-                    final double value = position.inMilliseconds.toDouble().clamp(0.0, max > 0 ? max : 1.0).toDouble();
-                    return Column(
-                      children: [
-                        Slider(
-                          value: value,
-                          max: max == 0 ? 1.0 : max,
-                          onChanged: (v) => widget.player.seek(Duration(milliseconds: v.toInt())),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(_format(position), style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                              Text(_format(duration), style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                            ],
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    IconButton(icon: const Icon(Icons.skip_previous_rounded, size: 45), onPressed: () {}),
-                    StreamBuilder<PlayerState>(
-                      stream: widget.player.playerStateStream,
-                      builder: (context, snapshot) {
-                        final playing = snapshot.data?.playing ?? false;
-                        return Container(
-                          decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                          child: IconButton(
-                            icon: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded, size: 45, color: Colors.black),
-                            onPressed: () => playing ? widget.player.pause() : widget.player.play(),
-                          ),
-                        );
-                      },
-                    ),
-                    IconButton(icon: const Icon(Icons.skip_next_rounded, size: 45), onPressed: () {}),
                   ],
                 ),
                 const SizedBox(height: 50),
