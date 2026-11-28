@@ -139,7 +139,16 @@ AudioPlayer get _player => _audio.player;
                 const BrowseScreen(),
                 LocalLibraryScreen(onPlay: _playTrack),
                 const FavoritesScreen(),
-                SearchScreen(onPlay: _playTrack, scClient: _scClient),
+                _yandexToken == null
+    ? YandexAuthScreen(
+        onTokenReceived: (token) {
+          setState(() => _yandexToken = token);
+        },
+      )
+    : SearchScreen(
+        onPlay: _playTrack,
+        yandexToken: _yandexToken!,
+      ),
               ],
             ),
           ),
