@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter/webview_flutter.dart'; // <- ВОТ ЭТОТ ИМПОРТ БЫЛ ПРОПУЩЕН
 
 class YandexAuthScreen extends StatefulWidget {
   final Function(String token) onTokenReceived;
@@ -22,7 +22,6 @@ class _YandexAuthScreenState extends State<YandexAuthScreen> {
           onUrlChange: (UrlChange change) {
             final url = change.url;
             if (url != null && url.contains('access_token=')) {
-              // Извлекаем токен из ссылки
               final token = Uri.parse(url).fragment.split('access_token=')[1].split('&')[0];
               widget.onTokenReceived(token);
               Navigator.pop(context);
@@ -30,7 +29,6 @@ class _YandexAuthScreenState extends State<YandexAuthScreen> {
           },
         ),
       )
-      // Официальная страница авторизации OAuth Яндекса[reference:3]
       ..loadRequest(Uri.parse(
         'https://oauth.yandex.ru/authorize?response_type=token&client_id=23cabbbdc6cd418abb4b39c32c41195d',
       ));
