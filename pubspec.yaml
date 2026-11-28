@@ -31,3 +31,8 @@ flutter_launcher_icons:
   ios: false
   image_path: "icon.png"
   min_sdk_android: 21
+dependencies:
+  flutter:
+    sdk: flutter
+  yandex_music: ^1.2.2  # Актуальная версия пакета[reference:2]
+  webview_flutter: ^4.7.0 # Для экрана авторизации
