@@ -60,11 +60,10 @@ class _MainScreenState extends State<MainScreen> {
   final StorixAudioEngine _audio = StorixAudioEngine();
 
 AudioPlayer get _player => _audio.player;
-  final SoundcloudClient _scClient = SoundcloudClient();
   
   int _currentIndex = 0;
   late PageController _pageController;
-  
+  String? _yandexToken; // Здесь будет храниться токен после входа
   Track? _currentTrack;
   bool _isLoadingTrack = false;
 
