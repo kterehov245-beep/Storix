@@ -602,11 +602,11 @@ class FavoritesScreen extends StatelessWidget {
     );
   }
 }
-// --- ПОИСК С ИСПРАВЛЕННЫМ SOUNDCLOUD ---
+// --- ПОИСК ЧЕРЕЗ ЯНДЕКС.МУЗЫКУ ---
 class SearchScreen extends StatefulWidget {
   final Function(Track) onPlay;
-  final SoundcloudClient scClient;
-  const SearchScreen({super.key, required this.onPlay, required this.scClient});
+  final String yandexToken; 
+  const SearchScreen({super.key, required this.onPlay, required this.yandexToken});
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -614,8 +614,16 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _controller = TextEditingController();
+  late final YandexMusic _ym;
   List<Track> _results = [];
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Инициализируем Яндекс.Музыку с нашим токеном
+    _ym = YandexMusic(token: widget.yandexToken);
+  }
 
   Future<void> _search(String query) async {
     if (query.isEmpty) return;
@@ -625,63 +633,54 @@ class _SearchScreenState extends State<SearchScreen> {
     });
 
     try {
-      debugPrint('--- НАЧАЛО ПОИСКА: $query ---');
+      debugPrint('--- НАЧАЛО ПОИСКА В ЯНДЕКСЕ: $query ---');
       
-      final searchResult = await widget.scClient.search.getTracks(query).first.timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          throw Exception('SoundCloud не ответил за 10 секунд (возможно, блокировка)');
-        },
-      );
-
-      debugPrint('--- НАЙДЕНО ТРЕКОВ: ${searchResult.length} ---');
+      // Ищем треки (0 - это страница/смещение)
+      final searchResult = await _ym.search.tracks(query, 0);
+      final List results = searchResult['results'] ?? [];
 
       List<Track> foundTracks = [];
 
-      for (var track in searchResult) {
+      for (var item in results) {
         try {
-          debugPrint('Загрузка стрима для: ${track.title}');
+          final trackId = item['id'].toString();
+          // Получаем прямую ссылку на скачивание/прослушивание
+          final downloadInfo = await _ym.tracks.getDownloadInfo(trackId);
           
-          final streams = await widget.scClient.tracks.getStreams(track.id).timeout(
-            const Duration(seconds: 5),
-          );
+          if (downloadInfo != null && downloadInfo['directLink'] != null) {
+            final artists = item['artists']?.map((a) => a['name']).join(', ') ?? 'Неизвестный исполнитель';
+            
+            // Формируем ссылку на обложку (Яндекс отдает её в специальном формате)
+            String coverUrl = '';
+            if (item['coverUri'] != null) {
+               coverUrl = 'https://' + item['coverUri'].toString().replaceAll('%%', '400x400');
+            }
 
-          if (streams.isEmpty) continue;
-
-          final streamInfo = streams.firstWhere(
-            (s) => s.container == 'mp3',
-            orElse: () => streams.first,
-          );
-
-          foundTracks.add(Track(
-            title: track.title,
-            artist: track.user.username,
-            thumbnail: track.artworkUrl?.toString() ?? '',
-            streamUrl: streamInfo.url.toString(),
-            duration: Duration(milliseconds: ((track.duration ?? 0) * 1000).toInt()),
-          ));
-
+            foundTracks.add(Track(
+              title: item['title'] ?? 'Без названия',
+              artist: artists,
+              thumbnail: coverUrl,
+              streamUrl: downloadInfo['directLink'].toString(), // Ссылка на MP3
+              duration: Duration(milliseconds: item['durationMs'] ?? 0),
+            ));
+          }
         } catch (e) {
-          debugPrint('Ошибка стрима для ${track.title}: $e');
+          debugPrint('Ошибка получения ссылки для трека: $e');
         }
       }
 
       setState(() {
         _results = foundTracks;
       });
-      
-      if (foundTracks.isEmpty) {
-        throw Exception('Треки найдены, но ни один не доступен для прослушивания');
-      }
+      debugPrint('--- ПОИСК ЗАВЕРШЕН, НАЙДЕНО: ${foundTracks.length} ---');
 
     } catch (e) {
-      debugPrint('!!! ОШИБКА ПОИСКА: $e !!!');
+      debugPrint('!!! ОШИБКА ПОИСКА В ЯНДЕКСЕ: $e !!!');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString()), 
+            content: Text('Ошибка: $e'), 
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
           ),
         );
       }
@@ -691,13 +690,20 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return SafeArea(
       bottom: false,
       child: Padding(
-        padding: const EdgeInsets.only(bottom: 180),
+        padding: const EdgeInsets.only(bottom: 180), // Отступ под плеер
         child: Column(
           children: [
+            // Поле ввода
             Padding(
               padding: const EdgeInsets.all(20.0),
               child: TextField(
@@ -705,7 +711,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 onSubmitted: _search,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  hintText: 'Поиск треков в SoundCloud...',
+                  hintText: 'Поиск в Яндекс.Музыке...',
                   hintStyle: const TextStyle(color: Colors.white54),
                   prefixIcon: const Icon(Icons.search, color: Colors.white54),
                   filled: true,
@@ -718,9 +724,11 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
             
+            // Индикатор загрузки
             if (_isLoading)
               const CircularProgressIndicator(color: Colors.blueAccent),
             
+            // Список треков
             Expanded(
               child: ListView.builder(
                 itemCount: _results.length,
@@ -736,7 +744,10 @@ class _SearchScreenState extends State<SearchScreen> {
                               width: 50,
                               height: 50,
                               fit: BoxFit.cover,
-                              errorBuilder: (c, e, s) => Container(color: Colors.grey, width: 50, height: 50, child: const Icon(Icons.music_note)),
+                              errorBuilder: (c, e, s) => Container(
+                                color: Colors.grey, width: 50, height: 50, 
+                                child: const Icon(Icons.music_note)
+                              ),
                             )
                           : Container(color: Colors.grey, width: 50, height: 50, child: const Icon(Icons.music_note)),
                     ),
@@ -744,8 +755,8 @@ class _SearchScreenState extends State<SearchScreen> {
                     subtitle: Text(track.artist, style: const TextStyle(color: Colors.white54), maxLines: 1, overflow: TextOverflow.ellipsis),
                     trailing: IconButton(
                       icon: const Icon(Icons.play_circle_fill, color: Colors.blueAccent, size: 36),
-                      onPressed: () => widget.onPlay(track), 
-                    )
+                      onPressed: () => widget.onPlay(track), // Вызов воспроизведения
+                    ),
                   );
                 },
               ),
@@ -755,8 +766,7 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
     );
   }
-} // <--- ВОТ ЭТА СКОБКА ЗАКРЫВАЕТ ПОИСК. ЕСЛИ ЕЕ НЕТ, ВСЁ ЛОМАЕТСЯ.
-
+}
 // --- ПОЛНОЭКРАННЫЙ ПЛЕЕР ---
 class PlayerScreen extends StatefulWidget {
   final Track track;
