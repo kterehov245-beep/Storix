@@ -2,9 +2,10 @@ import 'dart:ui';
 import 'glass.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
-import 'yandex_auth_screen.dart';
 import 'package:webview_flutter/webview_flutter.dart'; // Этот тоже нужен
-import 'package:soundcloud_explode_dart/soundcloud_explode_dart.dart';
+import import 'package:yandex_music/yandex_music.dart';
+// Если ты создавал отдельный файл для авторизации в Шаге 2, добавь:
+import 'yandex_auth_screen.dart'; 
 import 'package:glass_liquid_navbar/glass_liquid_navbar.dart'; // Импорт навигации
 import 'services/storix_audio_engine.dart';
 import 'library_screen.dart';
